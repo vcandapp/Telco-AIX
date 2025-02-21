@@ -54,7 +54,6 @@ Explore our curated models and datasets:
 | Avoid AI Blindness | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxi-avoid-ai-blindness-for-business-vision-and-see-the-rainbow-954eaa0dfa80) | Arun Thomas, Fatih E. NAR |
 | AI for Network Scalability | YouTube | [Watch Interview](https://www.youtube.com/watch?v=-gZ2xWLAw68) | Fatih E. NAR |
 | Integrating Gen AI in Networks | Vimeo | [Watch Panel](https://vimeo.com/948208742) | Fatih E. NAR |
-| AI Engineering Career | The New Stack | [Read Article](https://thenewstack.io/ai-engineering-level-up-your-it-career/) | Roy Chua, Fatih E. NAR et al. |
 | GenAI in Telcos | Fierce Network | [Read Article](https://www.fierce-network.com/sponsored/genai-game-changer-telcos) | Vinodhkumar Raghunathan, Fatih E. NAR |
 | BERT Model Training | Red Hat Developers | [Read Article](https://developers.redhat.com/blog/2024/07/23/how-train-bert-machine-learning-model-openshift-ai) | Alessandro Arrichiello |
 | ITSM Automation | Red Hat Developers | [Read Article](https://developers.redhat.com/blog/2024/09/18/transforming-itsm-ansible-automation-gradual-approach) | Alessandro Arrichiello |
