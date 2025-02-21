@@ -48,7 +48,7 @@ Explore our curated models and datasets:
 
 | Title | Platform | Link | Key Authors |
 |-------|----------|------|-------------|
-| Artificially Intelligent Platform Interface (AI-PI) | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxiv-artificially-intelligent-platform-interface-667f44dcecf1) | Fatih E. Nar et al. |
+| Artificially Intelligent Platform Interface (AI-PI) | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxiv-artificially-intelligent-platform-interface-667f44dcecf1) | Fatih E. Nar, Ian Hood, Shujaur Mufti et al. |
 | TrueAI4Telco | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxiii-trueai4telco-3e372898ce06) | Azhar Sayeed, Fatih E. NAR et al. |
 | AI Accelerators' Performance vs Sustainability | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxii-ai-accelerators-performance-vs-sustainability-256244f83b1b) | Fatih E. NAR |
 | Avoid AI Blindness | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxi-avoid-ai-blindness-for-business-vision-and-see-the-rainbow-954eaa0dfa80) | Arun Thomas, Fatih E. NAR |
