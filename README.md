@@ -6,9 +6,7 @@
 
 Welcome to the **Telco-AIX** collaborative experimental workspace – a cutting-edge initiative exploring data-driven decision-making through open-source AI capabilities and open datasets.
 
-## 🌐 Projects Landscape
-
-### AI-Powered Telecommunications Solutions
+## Projects 
 
 | Domain | Project | Focus Area |
 |--------|---------|------------|
@@ -28,16 +26,13 @@ Welcome to the **Telco-AIX** collaborative experimental workspace – a cutting-
 
 ## 🥚 Easter Egg
 
-### 🐳 Containerized AI
 - [Run DeepSeek Locally on Single K8s Node](https://github.com/tme-osx/Telco-AIX/tree/main/etc/deepseek)
-
-## 🤝 External Platforms
 
 ### 🤗 HuggingFace Collection
 Explore our curated models and datasets:
 [Telco-AIX on HuggingFace](https://huggingface.co/collections/fenar/telco-aix-66737384ab5687fe3d9a4b94)
 
-## 👥 Our Stellar Team
+## Team
 
 ### Collaboration & Expertise
 
@@ -51,7 +46,7 @@ Explore our curated models and datasets:
 | **Business Development** | Sankar Panneerselvam | [Profile](https://www.linkedin.com/in/sankarpanneerselvam-mba/) | Texas |
 | **Founder** | Fatih E. NAR | [Profile](https://www.linkedin.com/in/fenar/) | Texas |
 
-## 📝 Published Works
+## Published Works
 
 | Title | Platform | Link | Key Authors |
 |-------|----------|------|-------------|
