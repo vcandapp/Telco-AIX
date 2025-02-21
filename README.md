@@ -4,7 +4,7 @@
 
 # Telco AI eXperiments (Telco-AIX)
 
-Welcome to the **Telco-AIX** collaborative experimental workspace – a cutting-edge initiative exploring data-driven decision-making through open-source AI capabilities and open datasets.
+Welcome to the **Telco-AIX** collaborative experimental workspace – where we explore data-driven decision-making through open-source AI capabilities and open datasets.
 
 ## Projects 
 
