@@ -28,7 +28,7 @@ Welcome to the **Telco-AIX** collaborative experimental workspace – a cutting-
 
 - [Run DeepSeek Locally on Single K8s Node](https://github.com/tme-osx/Telco-AIX/tree/main/etc/deepseek)
 
-### 🤗 HuggingFace Collection
+### DataSets & Trained Models Collection
 Explore our curated models and datasets:
 [Telco-AIX on HuggingFace](https://huggingface.co/collections/fenar/telco-aix-66737384ab5687fe3d9a4b94)
 
