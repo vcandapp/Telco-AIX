@@ -34,8 +34,6 @@ Explore our curated models and datasets:
 
 ## Team
 
-### Collaboration & Expertise
-
 | **Role** | **Name** | **LinkedIn** | **Region** |
 |----------|----------|--------------|------------|
 | **Maintainer** | Alessandro Arrichiello | [Profile](https://www.linkedin.com/in/alessandroarrichiello/) | EMEA |
