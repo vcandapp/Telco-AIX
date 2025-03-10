@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: revenueassurance
-  namespace: tme-aix
+  namespace: revenue-assurance
 spec:
   params:
     - default: 'https://github.com/tme-osx/TME-AIX.git'
