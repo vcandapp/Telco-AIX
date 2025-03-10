@@ -9,25 +9,25 @@ spec:
       description: Repo URL
       name: GIT_URL
       type: string
-    - default: 'main'
+    - default: 'rev-assurance-nc'
       name: GIT_REVISION
       type: string
     - default: 3.11-ubi9
       name: PYTHON_IMAGE
       type: string
-    - default: 'http://ds-pipeline-dspa-tme-aix.apps.acmhub2.narlabs.io'
+    - default: 'http://ds-pipeline-dspa-revenue-assurance.apps.mgmt1.npss.bos2.lab'
       name: KUBEFLOW_ENDPOINT
       type: string
-    - default: 'http://minio-service.tme-aix.svc.cluster.local:9000'
+    - default: 'http://s3.openshift-storage.svc'
       name: S3_ENDPOINT
       type: string
-    - default: c7JUO3bLSd6OpN5nUhAz
+    - default: BIBKp4CjVK5tmsihvQ4U
       name: AWS_ACCESS_KEY_ID
       type: string
-    - default: KtKnRPT6iIPBtNsBrPadOKhaXzd1glpVYCslkHIW
+    - default: 9UgkHT9oXfw/OHLiEzEhzvL2LOj/FJp/BVjqPdeU
       name: AWS_SECRET_ACCESS_KEY
       type: string
-    - default: tme-aix
+    - default: wb-storage-2f1de66c-b9f5-4197-a53c-89db6bb19ba4
       name: BUCKET_NAME
       type: string
   tasks:
