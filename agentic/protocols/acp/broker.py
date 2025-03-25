@@ -1,5 +1,6 @@
-# protocols/acp/broker.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 import asyncio
 import logging
 import json
