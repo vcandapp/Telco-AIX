@@ -1,4 +1,4 @@
-// src/telecom_agent_framework/dashboard/static/js/agent.js
+// agentic/dashboard/static/js/agent.js
 document.addEventListener('DOMContentLoaded', function() {
     // Get agent ID from URL
     const pathParts = window.location.pathname.split('/');
