@@ -1,4 +1,4 @@
-// src/telecom_agent_framework/dashboard/static/js/workflow.js
+// agentic/dashboard/static/js/workflow.js
 document.addEventListener('DOMContentLoaded', function() {
     // Get workflow ID from URL
     const pathParts = window.location.pathname.split('/');
