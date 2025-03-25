@@ -1,7 +1,6 @@
 # Telecom AI Agent Framework
 
-A cloud-native framework for autonomous network management through cooperating AI agents that detect, diagnose, plan, and resolve telecom network issues without human intervention. <br>
-Disclaimer: In the current implementation we have leveraged rule based agentic approach rather than FM enclosed inside the agent (as that would be heavy to launch in our sandbox due to hubmle lab we have).
+A cloud-native framework for autonomous network management through cooperating AI agents that detect, diagnose, plan, and resolve telecom network issues without human intervention. 
 
 ## What Problem Does This Solve?
 
@@ -235,3 +234,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 This framework was inspired by the concepts presented in "Episode-XXV: Satisfaction is All You Need," particularly the Level-5 Agentic Approach and Integration with Telecom Machinery.
 
 Ref: https://medium.com/open-5g-hypercore/episode-xxv-satisfaction-is-all-you-need-9ff145d68385
+
+<br> <br>
+Disclaimer: In the current implementation we have leveraged rule based agentic approach rather than FM enclosed inside the agent (as that would be heavy to launch in our sandbox due to hubmle lab we have).
