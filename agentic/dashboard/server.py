@@ -1,5 +1,6 @@
-# agentic/dashboard/server.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 import asyncio
 import logging
 from typing import Dict, Any, List, Optional
