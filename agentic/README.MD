@@ -72,6 +72,7 @@ Then open your browser and navigate to:
 ```
 http://localhost:8080
 ```
+![](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/agentic.png)<br>
 
 You'll see the dashboard with real-time visualization of agent activities, network telemetry, and workflow status.
 
