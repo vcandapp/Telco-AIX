@@ -13,7 +13,9 @@ Traditional network management requires human operators to:
 
 The Telecom AI Agent Framework automates this entire workflow through specialized AI agents that work together to maintain network health autonomously, reducing downtime and operational costs.
 
-![](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/arc.png)<br>
+<div align="center">
+    <img src="https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/arc.png" width="400"/>
+</div>
 
 ## Key Features
 
