@@ -1,5 +1,6 @@
-# src/telecom_agent_framework/agents/diagnostic/network_diagnostic_agent.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 import asyncio
 import logging
 import time
