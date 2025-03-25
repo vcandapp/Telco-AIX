@@ -1,5 +1,6 @@
-# src/telecom_agent_framework/agent/base.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 import uuid
 import logging
 import asyncio
