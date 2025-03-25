@@ -1,6 +1,7 @@
 # Telecom AI Agent Framework
 
-A cloud-native framework for autonomous network management through cooperating AI agents that detect, diagnose, plan, and resolve telecom network issues without human intervention.
+A cloud-native framework for autonomous network management through cooperating AI agents that detect, diagnose, plan, and resolve telecom network issues without human intervention. <br>
+Disclaimer: In the current implementation we have leveraged rule based agentic approach rather than FM enclosed inside the agent (as that would be heavy to launch in our sandbox due to hubmle lab we have).
 
 ## What Problem Does This Solve?
 
