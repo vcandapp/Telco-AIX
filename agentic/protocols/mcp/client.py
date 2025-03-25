@@ -1,5 +1,6 @@
-# src/telecom_agent_framework/protocols/mcp/client.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 import aiohttp
 import logging
 from typing import Dict, Any, Optional
