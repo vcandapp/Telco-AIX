@@ -1,5 +1,6 @@
-# src/telecom_agent_framework/protocols/acp/schema.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 from enum import Enum
