@@ -1,4 +1,4 @@
-// src/telecom_agent_framework/dashboard/static/js/dashboard.js
+// agentic/dashboard/static/js/dashboard.js
 document.addEventListener('DOMContentLoaded', function() {
     // Navigation
     const navLinks = document.querySelectorAll('nav ul li a');
