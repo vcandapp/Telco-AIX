@@ -1,0 +1,18 @@
+# requirements.txt
+
+# Web server and API
+fastapi>=0.103.1
+uvicorn>=0.23.2
+aiohttp>=3.8.5
+
+# Data handling and validation
+pydantic>=2.4.2
+numpy>=1.24.0
+
+# Asynchronous programming
+asyncio>=3.4.3
+
+# Utilities
+python-dateutil>=2.8.2
+
+setuptools

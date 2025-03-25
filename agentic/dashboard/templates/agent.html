@@ -1,0 +1,93 @@
+<!-- src/telecom_agent_framework/dashboard/templates/agent.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Details - Telecom AI Agent Framework</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Telecom AI Agent Framework</h1>
+        <nav>
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li class="active"><a href="#agent">Agent Details</a></li>
+                <li><a href="/#workflows">Workflows</a></li>
+                <li><a href="/#telemetry">Telemetry</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <section id="agent" class="section active">
+            <div class="breadcrumb">
+                <a href="/#agents">Agents</a> &gt; <span id="agentBreadcrumb">Agent Details</span>
+            </div>
+            
+            <div class="agent-header">
+                <h2 id="agentName">Agent Details</h2>
+                <span class="agent-badge" id="agentType">diagnostic</span>
+                <span class="status-badge" id="agentStatus">active</span>
+            </div>
+            
+            <div class="agent-grid">
+                <div class="card">
+                    <h3>Agent Information</h3>
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-label">ID:</span>
+                            <span class="info-value" id="agentId"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Type:</span>
+                            <span class="info-value" id="agentTypeInfo"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status:</span>
+                            <span class="info-value" id="agentStatusInfo"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Last Seen:</span>
+                            <span class="info-value" id="agentLastSeen"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Network Location:</span>
+                            <span class="info-value" id="agentLocation"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Capabilities</h3>
+                    <div class="capabilities-list" id="agentCapabilities">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Activity History</h3>
+                    <div class="chart-container">
+                        <canvas id="agentActivityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Messages</h3>
+                    <div class="messages-list" id="agentMessages">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>Telecom AI Agent Framework &copy; 2025</p>
+    </footer>
+    
+    <script src="/static/js/agent.js"></script>
+</body>
+</html>

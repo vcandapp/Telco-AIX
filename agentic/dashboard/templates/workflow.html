@@ -1,0 +1,114 @@
+<!-- src/telecom_agent_framework/dashboard/templates/workflow.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Details - Telecom AI Agent Framework</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Telecom AI Agent Framework</h1>
+        <nav>
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/#agents">Agents</a></li>
+                <li class="active"><a href="#workflow">Workflow Details</a></li>
+                <li><a href="/#telemetry">Telemetry</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <section id="workflow" class="section active">
+            <div class="breadcrumb">
+                <a href="/#workflows">Workflows</a> &gt; <span id="workflowBreadcrumb">Workflow Details</span>
+            </div>
+            
+            <div class="workflow-header">
+                <h2 id="workflowTitle">Workflow Details</h2>
+                <span class="workflow-badge" id="workflowType">anomaly_resolution</span>
+                <span class="status-badge" id="workflowStatus">running</span>
+            </div>
+            
+            <div class="workflow-grid">
+                <div class="card">
+                    <h3>Workflow Information</h3>
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-label">ID:</span>
+                            <span class="info-value" id="workflowId"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Type:</span>
+                            <span class="info-value" id="workflowTypeInfo"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status:</span>
+                            <span class="info-value" id="workflowStatusInfo"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Created:</span>
+                            <span class="info-value" id="workflowCreated"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Updated:</span>
+                            <span class="info-value" id="workflowUpdated"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Initiator:</span>
+                            <span class="info-value" id="workflowInitiator"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Progress</h3>
+                    <div class="progress-bar large">
+                        <div class="progress" id="workflowProgress"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <div class="stat">
+                            <span class="stat-label">Steps Completed:</span>
+                            <span class="stat-value" id="stepsCompleted">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Steps Total:</span>
+                            <span class="stat-value" id="stepsTotal">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Parameters</h3>
+                    <div class="parameters-list" id="workflowParameters">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Results</h3>
+                    <div class="results-list" id="workflowResults">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="workflow-steps">
+                <h3>Workflow Steps</h3>
+                <div class="steps-timeline" id="workflowSteps">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>Telecom AI Agent Framework &copy; 2025</p>
+    </footer>
+    
+    <script src="/static/js/workflow.js"></script>
+</body>
+</html>

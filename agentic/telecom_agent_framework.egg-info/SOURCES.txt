@@ -1,0 +1,5 @@
+setup.py
+telecom_agent_framework.egg-info/PKG-INFO
+telecom_agent_framework.egg-info/SOURCES.txt
+telecom_agent_framework.egg-info/dependency_links.txt
+telecom_agent_framework.egg-info/top_level.txt

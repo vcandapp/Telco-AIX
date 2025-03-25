@@ -1,0 +1,221 @@
+<!-- src/telecom_agent_framework/dashboard/templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telecom AI Agent Framework Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Telecom AI Agent Framework</h1>
+        <nav>
+            <ul>
+                <li class="active"><a href="#dashboard">Dashboard</a></li>
+                <li><a href="#agents">Agents</a></li>
+                <li><a href="#workflows">Workflows</a></li>
+                <li><a href="#telemetry">Telemetry</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <section id="dashboard" class="section active">
+            <h2>System Overview</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Agent Status</h3>
+                    <div class="chart-container">
+                        <canvas id="agentStatusChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Workflow Status</h3>
+                    <div class="chart-container">
+                        <canvas id="workflowStatusChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>System Health</h3>
+                    <div class="metrics">
+                        <div class="metric">
+                            <span class="metric-name">CPU Usage</span>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 45%"></div>
+                            </div>
+                            <span class="metric-value">45%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-name">Memory Usage</span>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 60%"></div>
+                            </div>
+                            <span class="metric-value">60%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-name">Network I/O</span>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 30%"></div>
+                            </div>
+                            <span class="metric-value">30%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Recent Events</h3>
+                    <div class="events-list" id="eventsContainer">
+                        <div class="event">
+                            <span class="event-time">12:45:30</span>
+                            <span class="event-type diagnostic">Diagnostic</span>
+                            <span class="event-message">Anomaly detected in cell site A123</span>
+                        </div>
+                        <div class="event">
+                            <span class="event-time">12:45:45</span>
+                            <span class="event-type planning">Planning</span>
+                            <span class="event-message">Generated plan to resolve latency issue</span>
+                        </div>
+                        <div class="event">
+                            <span class="event-time">12:46:15</span>
+                            <span class="event-type execution">Execution</span>
+                            <span class="event-message">Applying configuration changes</span>
+                        </div>
+                        <div class="event">
+                            <span class="event-time">12:47:30</span>
+                            <span class="event-type validation">Validation</span>
+                            <span class="event-message">Issue resolution confirmed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="agents" class="section">
+            <h2>Agent Management</h2>
+            <div class="filter-bar">
+                <div class="filter">
+                    <label for="agentTypeFilter">Agent Type:</label>
+                    <select id="agentTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="diagnostic">Diagnostic</option>
+                        <option value="planning">Planning</option>
+                        <option value="execution">Execution</option>
+                        <option value="validation">Validation</option>
+                    </select>
+                </div>
+                <div class="filter">
+                    <label for="agentStatusFilter">Status:</label>
+                    <select id="agentStatusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="idle">Idle</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+                <div class="search">
+                    <input type="text" id="agentSearch" placeholder="Search agents...">
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="agentsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentsTableBody">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <section id="workflows" class="section">
+            <h2>Workflow Management</h2>
+            <div class="filter-bar">
+                <div class="filter">
+                    <label for="workflowTypeFilter">Workflow Type:</label>
+                    <select id="workflowTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="anomaly_resolution">Anomaly Resolution</option>
+                        <option value="network_optimization">Network Optimization</option>
+                        <option value="customer_issue_resolution">Customer Issue</option>
+                    </select>
+                </div>
+                <div class="filter">
+                    <label for="workflowStatusFilter">Status:</label>
+                    <select id="workflowStatusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="created">Created</option>
+                        <option value="running">Running</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <div class="search">
+                    <input type="text" id="workflowSearch" placeholder="Search workflows...">
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="workflowsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Progress</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workflowsTableBody">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <section id="telemetry" class="section">
+            <h2>Network Telemetry</h2>
+            <div class="telemetry-grid">
+                <div class="card">
+                    <h3>Packet Loss</h3>
+                    <div class="chart-container">
+                        <canvas id="packetLossChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Latency</h3>
+                    <div class="chart-container">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Throughput</h3>
+                    <div class="chart-container">
+                        <canvas id="throughputChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Signal Strength</h3>
+                    <div class="chart-container">
+                        <canvas id="signalStrengthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>Telecom AI Agent Framework &copy; 2025</p>
+    </footer>
+    
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
