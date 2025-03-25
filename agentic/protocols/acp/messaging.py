@@ -1,5 +1,6 @@
-# src/telecom_agent_framework/protocols/acp/messaging.py
-
+# Author: Fatih E. NAR
+# Agentic AI Framework
+#
 import asyncio
 import logging
 import uuid
