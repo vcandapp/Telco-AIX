@@ -228,4 +228,4 @@ agentic/
 
 ## Disclaimer
 
-In the current implementation we have leveraged rule based agentic approach rather than FM enclosed inside the agent (as that would be heavy to launch in our sandbox due to hubmle lab we have).
+In the current (1st drop) implementation we have leveraged rule based agentic approach rather than FM enclosed inside the agent (as that would be heavy to launch in our sandbox due to humble lab we have). In coming version(s) it will evolve more towards self-learning and improving beings with help of a custom small fm engine (wip).
