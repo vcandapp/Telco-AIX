@@ -10,7 +10,7 @@ from datetime import datetime
 num_months = 36
 unique_customers = 27778  # Fixed set of unique customers
 total_records = unique_customers * num_months  # 1,000,008 records
-churn_threshold = 0.8
+churn_threshold = 0.6  # Churn risk score threshold for churn event
 
 # ---------------------------
 # Helper Function: Last Day of Month
@@ -257,5 +257,6 @@ print(churned_customers)
 # ---------------------------
 # Save the Synthetic Data
 # ---------------------------
-df.to_csv("./churn/data/synthetic_customer_data_evenly_distributed.csv", index=False)
-print("Synthetic data generated and saved to './churn/data/synthetic_customer_data_evenly_distributed.csv'")
+data_path = "data/synthetic_customer_data_evenly_distributed.csv"
+df.to_csv(data_path, index=False)
+print(f"Synthetic data generated and saved to '{data_path}'")
