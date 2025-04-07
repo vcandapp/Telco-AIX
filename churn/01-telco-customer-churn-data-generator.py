@@ -85,8 +85,13 @@ def calculate_churn_risk(df: pd.DataFrame) -> pd.Series:
         w_escalation * risk_escalation
     )
 
+    # Inject random noise to lower the predictive accuracy (e.g., to around 75%)
+    # Adjust the scale parameter as needed to achieve the desired accuracy.
+    noise = np.random.normal(loc=0, scale=0.25, size=risk_score.shape)
+    noisy_risk_score = risk_score + noise
+
     # Ensure the risk score is within [0, 1] and round to two decimals.
-    return risk_score.clip(0, 1).round(2)
+    return noisy_risk_score.clip(0, 1).round(2)
 
 def filter_entries_after_churn(
     data: pd.DataFrame,
