@@ -39,7 +39,7 @@ spec:
             memory: "1Gi"
         env:
         - name: OLLAMA_BASE_URL
-          value: "http://your-ollama-route-here" # Replace with a ollama route
+          value: "http://your-ollama-route-here"
         volumeMounts:
         - name: webui-volume
           mountPath: /app/backend/data
