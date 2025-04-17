@@ -1,3 +1,5 @@
+# Author: Ömer Saatcioglu
+
 import numpy as np
 import pandas as pd
 import random
