@@ -40,6 +40,10 @@ spec:
         env:
         - name: OLLAMA_BASE_URL
           value: "http://your-ollama-route-here"
+        - name: WEBUI_SECRET_KEY
+          value: "your-secret-key-here" 
+        - name: OPENWEBUI_ROOT_KEY
+          value: "your-root-key-here"   
         volumeMounts:
         - name: webui-volume
           mountPath: /app/backend/data
