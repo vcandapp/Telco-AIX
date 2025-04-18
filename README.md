@@ -11,7 +11,7 @@ Welcome to the **Telco-AIX** collaborative experimental workspace –> where we 
 | Domain | Project | Focus Area |
 |--------|---------|------------|
 | 💰 Revenue Management | [RAFM](https://github.com/tme-osx/Telco-AIX/tree/main/revenueassurance) | Revenue Assurance & Fraud Detection |
-| 📊 Service Quality | [Service Assurance](https://github.com/tme-osx/Telco-AIX/tree/main/serviceassurance) | Latency & NPS Predictions |
+| 📊 Service Quality | [Service Assurance](https://github.com/tme-osx/Telco-AIX/tree/main/serviceassurance) <br> [Churn Prediction](https://github.com/open-experiments/Telco-AIX/tree/main/churn)| Latency & NPS Predictions & Churn Predictions|
 | 🌐 Network Operations | [5G Network Ops](https://github.com/tme-osx/Telco-AIX/tree/main/5gnetops) | Fault Predictions |
 | 🌿 Sustainability | [Energy Efficiency](https://github.com/tme-osx/Telco-AIX/tree/main/sustainability) | Green Telecom Initiatives |
 | 🔒 Security | [SecOps-AI](https://github.com/tme-osx/Telco-AIX/tree/main/secops) | Networking Security |
