@@ -9,7 +9,6 @@ import requests
 import os
 import logging
 import time
-import re
 from datetime import datetime
 
 # Configure logging
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# API Configuration - Define constants at the top level for easy modification
+# Model Access Configuration 
 API_BASE_URL = 'http://modelroute.apps.clustername.domainname'
 API_ENDPOINT = '/v1/completions'
 MODEL_NAME = "model-name"
