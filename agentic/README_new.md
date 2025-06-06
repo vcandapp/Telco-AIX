@@ -6,8 +6,6 @@ An AI-driven Network Operations Center (NOC) for 5G networks featuring real-time
 
 **Demo Video**: [Watch on YouTube](https://www.youtube.com/watch?v=nQlEBPeQ1hk)
 
-![NOC Dashboard](docs/images/dashboard-preview.png)
-
 ## ✨ Key Features
 
 ### Autonomous Operations
@@ -118,8 +116,17 @@ spec:
 
 ### Dashboard Views
 1. **System Overview**: Real-time statistics and anomaly counts
-2. **Agent Topology**: Interactive visualization of agent network
-3. **Active Workflows**: Current and historical remediation workflows
+
+![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/n1.png)
+
+3. **Agent Topology**: Interactive visualization of agent network
+   
+![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/n2.png)
+
+5. **Active Workflows**: Current and historical remediation workflows
+
+![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/n3.png)
+
 
 ### Playbook Structure
 Place Ansible playbooks in the `playbooks` directory:
