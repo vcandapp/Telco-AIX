@@ -52,8 +52,10 @@ An AI-driven Network Operations Center (NOC) for 5G networks featuring real-time
 
 ## 📋 Prerequisites
 
+- RHOCP 4.18+
+- RHOAI Operator 2.20+
 - Python 3.8+
-- Ansible (optional, for actual playbook execution)
+- Ansible 
 - Modern web browser (Chrome, Firefox, Safari)
 
 ## 🔧 Installation
