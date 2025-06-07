@@ -120,15 +120,15 @@ spec:
 ### Dashboard Views
 1. **System Overview**: Real-time statistics and anomaly counts
 
-![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/n1.png)
+![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/autonet/images/n1.png)
 
 3. **Agent Topology**: Interactive visualization of agent network
    
-![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/n2.png)
+![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/autonet/images/n2.png)
 
 5. **Active Workflows**: Current and historical remediation workflows
 
-![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/agentic/images/n3.png)
+![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/autonet/images/n3.png)
 
 
 ### Playbook Structure
