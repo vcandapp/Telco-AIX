@@ -1,8 +1,8 @@
-# Enhanced Autonomous 5G NOC Dashboard
+#  Autonomous 5G Network 
 
 ## 🚀 Overview
 
-An AI-driven Network Operations Center (NOC) for 5G networks featuring real-time anomaly detection, autonomous remediation, and advanced agent topology visualization. This system monitors AMF, SMF, and UPF components, automatically detects anomalies, and executes remediation playbooks without human intervention.
+An Autonomous 5G Networks featuring real-time anomaly detection, autonomous remediation, and advanced agent topology visualization. This system monitors AMF, SMF, and UPF components, automatically detects anomalies, and executes remediation playbooks without human intervention.
 
 **Demo Video**: [Watch on YouTube](https://www.youtube.com/watch?v=nQlEBPeQ1hk)
 
