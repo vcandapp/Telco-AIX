@@ -75,8 +75,8 @@ pip install -r requirements.txt
 
 ### Basic Usage
 ```bash
-cd Telco-AIX/agentic
-python main_new.py --data-path processed_data --playbook-dir playbooks
+cd Telco-AIX/autonet
+python main.py --data-path processed_data --playbook-dir playbooks
 ```
 
 ## 🌐 Accessing the Dashboard
