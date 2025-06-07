@@ -39,9 +39,10 @@ An Autonomous 5G Networks featuring real-time anomaly detection, autonomous reme
 └─────────────────────┘     │     Manager         │
            │                └─────────────────────┘
            ▼                           │
-┌─────────────────────────────────────▼─────────────┐
-│              Web Dashboard (Async HTTP)            │
-└───────────────────────────────────────────────────┘
+                                       ▼
+┌──────────────────────────────────────────────────┐
+│              Web Dashboard (Async HTTP)          │
+└──────────────────────────────────────────────────┘
 ```
 
 ### Agent Workflow
