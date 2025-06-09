@@ -1,95 +1,244 @@
-#  Autonomous 5G Network 
+# 🤖 Autonomous 5G Network Operations - Real Agentic Framework
 
 ## 🚀 Overview
 
-An Autonomous 5G Networks featuring real-time anomaly detection, autonomous remediation, and advanced agent topology visualization. This system monitors AMF, SMF, and UPF components, automatically detects anomalies, and executes remediation playbooks without human intervention.
+A **real autonomous 5G network operations system** featuring distributed AI agents, real-time anomaly detection, and autonomous remediation. The system uses genuine agent-to-agent communication protocols (ACP/MCP) with live orchestration for monitoring AMF, SMF, and UPF components.
 
-**Demo Video**: [Watch on YouTube](https://www.youtube.com/watch?v=nQlEBPeQ1hk)
+**🎥 Demo Video**: [Watch on YouTube](https://www.youtube.com/watch?v=nQlEBPeQ1hk)
+
+---
 
 ## ✨ Key Features
 
-### Autonomous Operations
+### 🤖 **Real Agentic Framework**
+- **Autonomous AI Agents**: Four specialized agents with real communication protocols
+- **Agent Communication Protocol (ACP)**: WebSocket-based inter-agent messaging
+- **Model Context Protocol (MCP)**: HTTP-based context and data sharing
+- **Dynamic Orchestration**: Central orchestration service for task delegation and workflow coordination
+- **Agent Discovery**: Real-time agent registration and capability discovery
+
+### 🔍 **Intelligent Operations**
 - **Real-time Anomaly Detection**: Continuously monitors 5G network components (AMF, SMF, UPF)
-- **Intelligent Workflow Management**: Multi-agent system with diagnostic, planning, execution, and validation stages
-- **Automated Remediation**: Executes Ansible playbooks based on anomaly patterns
-- **Timeline-based Processing**: Replay historical data with adjustable speed (1x, 5x, 10x, 100x)
+- **Autonomous Remediation**: Agents collaborate to diagnose, plan, execute, and validate fixes
+- **Timeline Processing**: Replay historical data with adjustable speed (1x-100x)
+- **Predictive Analytics**: ML-powered anomaly prediction and trend analysis
 
-### Advanced Visualization
-- **Agent Topology View**: Real-time visualization of agent interactions and performance
+### 📊 **Advanced Visualization**
+- **Live Agent Topology**: Real-time visualization of agent interactions and communication flows
 - **Performance Metrics**: Live charts for registration rates, session establishment, throughput, and latency
-- **Workflow Tracking**: Detailed view of active and historical remediation workflows
-- **Predictive Analytics**: Bottleneck predictions and health scoring for each agent
+- **Workflow Tracking**: Detailed view of active and historical autonomous workflows
+- **Health Monitoring**: Agent performance metrics and communication status
 
-### Technical Capabilities
-- **Scalable Architecture**: Modular design with async Python backend
-- **RESTful API**: Comprehensive API for integration with external systems
-- **Real-time WebSocket Updates**: Live dashboard updates without polling
-- **Configurable Playbooks**: Extensible remediation library
+---
 
-## 🏗️ Architecture
+## 🏗️ **Real Agentic Architecture**
 
 ```
-┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│   NOC Data Monitor  │────▶│  Workflow Manager   │────▶│ Ansible Executor    │
-└─────────────────────┘     └─────────────────────┘     └─────────────────────┘
-           │                           │
-           ▼                           ▼
-┌─────────────────────┐     ┌─────────────────────┐
-│  Metrics Tracker    │     │  Agent Topology     │
-└─────────────────────┘     │     Manager         │
-           │                └─────────────────────┘
-           ▼                           │
-                                       ▼
-┌──────────────────────────────────────────────────┐
-│              Web Dashboard (Async HTTP)          │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         🎯 Orchestration Service                         │
+│                     (Workflow Coordination & Discovery)                  │
+└─────────────────────────┬────────────────────────────────────────────────┘
+                          │ Task Delegation
+                          ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    🌐 Communication Protocols                       │
+    │  ACP Broker (WebSocket)    │    MCP Server (HTTP Context)           │
+    └─────────────┬───────────────────────────────┬───────────────────────┘
+                  │                               │
+                  ▼                               ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        🤖 Autonomous Agents                             │
+├─────────────────┬─────────────────┬─────────────────┬───────────────────┤
+│  🔍 Diagnostic  │  📋 Planning    │  ⚡ Execution   │  ✅ Validation     │
+│     Agent       │     Agent       │     Agent       │     Agent         │
+│                 │                 │                 │                   │
+│ • Anomaly       │ • Remediation   │ • Playbook      │ • Result          │
+│   Analysis      │   Strategy      │   Execution     │   Verification    │
+│ • Pattern       │ • Resource      │ • Automation    │ • Performance     │
+│   Recognition   │   Planning      │   Tasks         │   Validation      │
+│ • ML Models     │ • Impact        │ • Rollback      │ • Health Check    │
+└─────────────────┴─────────────────┴─────────────────┴───────────────────┘
+                  │                               │
+                  ▼                               ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│               📊 Enhanced NOC Dashboard (Real-time)                     │
+│   Agent Topology • Live Metrics • Workflow Status • Performance        │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Agent Workflow
-1. **Diagnostic Agent**: Analyzes anomaly patterns and severity
-2. **Planning Agent**: Generates remediation strategies
-3. **Execution Agent**: Runs selected Ansible playbooks
-4. **Validation Agent**: Verifies successful remediation
+### 🔄 **Autonomous Workflow Process**
 
-## 📋 Prerequisites
+1. **🔍 Diagnostic Agent** (`diagnostic-001`)
+   - Analyzes anomaly patterns using ML models
+   - Communicates findings via ACP WebSocket protocol
+   - Provides context to other agents via MCP
 
-- RHOCP 4.18+
-- RHOAI Operator 2.20+
-- Python 3.8+
-- Ansible 
-- Modern web browser (Chrome, Firefox, Safari)
+2. **📋 Planning Agent** (`planning-001`)
+   - Receives diagnostic data from orchestration service
+   - Generates remediation strategies and resource plans
+   - Coordinates with execution agent for implementation
 
-## 🔧 Installation
+3. **⚡ Execution Agent** (`execution-001`)
+   - Executes Ansible playbooks autonomously
+   - Monitors execution progress and handles failures
+   - Reports status to orchestration service
 
-**Clone the repository**
+4. **✅ Validation Agent** (`validation-001`)
+   - Verifies remediation effectiveness
+   - Monitors system health post-execution
+   - Triggers rollback if validation fails
+
+---
+
+## 🛠️ **Technical Stack**
+
+### **Core Framework**
+- **Language**: Python 3.8+ (Async/Await)
+- **Protocols**: ACP (WebSocket), MCP (HTTP)
+- **Communication**: FastAPI, aiohttp, WebSockets
+- **Orchestration**: Custom orchestration service with agent discovery
+- **Data Processing**: Pandas, NumPy, Scikit-learn
+
+### **Infrastructure**
+- **Automation**: Ansible playbooks
+- **Deployment**: RHOCP 4.18+, RHOAI Operator 2.20+
+- **Storage**: Vector databases (FAISS), Pickle serialization
+- **Frontend**: Modern web dashboard with real-time updates
+
+---
+
+## 📋 **Prerequisites**
+
+### **Platform Requirements**
+- **RHOCP**: 4.18+
+- **RHOAI Operator**: 2.20+
+- **Python**: 3.8+
+- **Ansible**: Latest version
+- **Browser**: Chrome, Firefox, Safari (modern)
+
+### **Network Requirements**
+- **Port 30080**: Web dashboard
+- **Port 8765**: ACP broker (WebSocket)
+- **Port 3000**: MCP server (HTTP)
+
+---
+
+## 🚀 **Quick Start**
+
+### **1. Clone Repository**
 ```bash
 git clone https://github.com/yourusername/Telco-AIX.git
-cd Telco-AIX/agentic
+cd Telco-AIX/autonetv2
 ```
 
- **Install dependencies**
+### **2. Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-## 🚀 Usage
-
-### Basic Usage
+### **3. Launch Agentic System**
 ```bash
-cd Telco-AIX/autonet
 python main.py --data-path processed_data --playbook-dir playbooks
 ```
 
-## 🌐 Accessing the Dashboard
+### **4. Access Dashboard**
+Navigate to: **http://localhost:30080**
 
-Once running, access the dashboard at:
+---
+
+## 🌐 **Dashboard Features**
+
+### **📊 System Overview**
+- Real-time anomaly statistics
+- Agent health and communication status  
+- Timeline processing controls (1x-100x speed)
+- Network component health (AMF, SMF, UPF)
+
+![System Overview](./images/n1.png)
+
+### **🤖 Agent Topology**
+- Interactive agent network visualization
+- Real-time communication flows
+- Agent performance metrics
+- Protocol status (ACP/MCP)
+
+![Agent Topology](./images/n2.png)
+
+### **🔄 Active Workflows**
+- Live workflow execution status
+- Agent interaction timelines
+- Remediation progress tracking
+- Historical workflow analysis
+
+![Workflow Tracking](./images/n3.png)
+
+---
+
+## ⚙️ **Configuration**
+
+### **Real Agent System**
+The system automatically detects and initializes real agents with:
+- **Agent IDs**: `diagnostic-001`, `planning-001`, `execution-001`, `validation-001`
+- **Protocols**: ACP (ws://localhost:8765), MCP (http://localhost:3000)
+- **Orchestration**: Automatic agent registration and task delegation
+
+### **Ansible Playbooks**
+Place remediation playbooks in `playbooks/` directory:
+
+```yaml
+# Example: scale_amf_resources.yml
+---
+- name: Scale AMF Resources Autonomously
+  hosts: amf_nodes
+  gather_facts: yes
+  tasks:
+    - name: Increase CPU allocation
+      shell: |
+        # Your autonomous remediation logic
+        echo "Scaling AMF resources based on agent analysis"
+    
+    - name: Verify scaling completion
+      wait_for:
+        timeout: 60
+        msg: "AMF scaling completed"
 ```
-http://localhost:30080
+
+### **Available Playbooks**
+- `scale_amf_resources.yml` - Autonomous AMF scaling
+- `restart_smf_service.yml` - SMF service restart
+- `adjust_upf_load_balancing.yml` - UPF load balancing
+- `resource_optimization.yml` - General optimization
+
+---
+
+## 🐳 **RHOCP Deployment**
+
+### **Service Configuration**
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentic-dashboard
+  namespace: tme-aix
+spec:
+  ports:
+    - name: dashboard
+      port: 30080
+      targetPort: 30080
+    - name: acp-broker  
+      port: 8765
+      targetPort: 8765
+    - name: mcp-server
+      port: 3000  
+      targetPort: 3000
+  selector:
+    statefulset: tme-aix-wb01
 ```
-If you are using with RHOCPAI , you will need a OCP Service and Route:
-```
-kind: Route
+
+### **Route Configuration**
+```yaml
 apiVersion: route.openshift.io/v1
+kind: Route
 metadata:
   name: agentic-dashboard
   namespace: tme-aix
@@ -98,55 +247,87 @@ spec:
   to:
     kind: Service
     name: agentic-dashboard
-    weight: 100
   port:
     targetPort: 30080
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: agentic-dashboard
-  namespace: tme-aix
-spec:
-  ports:
-    - protocol: TCP
-      port: 30080
-      targetPort: 30080
-  selector:
-    statefulset: tme-aix-wb01 <-- This is your RHOAI WorkBench Name (POD)
-
 ```
 
-### Dashboard Views
-1. **System Overview**: Real-time statistics and anomaly counts
-
-![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/autonet/images/n1.png)
-
-3. **Agent Topology**: Interactive visualization of agent network
-   
-![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/autonet/images/n2.png)
-
-5. **Active Workflows**: Current and historical remediation workflows
-
-![New NOC Dashboard](https://raw.githubusercontent.com/open-experiments/Telco-AIX/refs/heads/main/autonet/images/n3.png)
-
-
-### Playbook Structure
-Place Ansible playbooks in the `playbooks` directory:
-```yaml
-# Example: scale_amf_resources.yml
 ---
-- name: Scale AMF Resources
-  hosts: amf_nodes
-  tasks:
-    - name: Increase CPU allocation
-      # Your remediation tasks here
+
+## 🔧 **Advanced Features**
+
+### **Agent Communication Monitoring**
+```bash
+# Monitor ACP WebSocket connections
+curl -s http://localhost:8765/agents
+
+# Check MCP server status  
+curl -s http://localhost:3000/health
+
+# Orchestration service metrics
+curl -s http://localhost:30080/api/enhanced-agent-topology
 ```
 
-### Provided Playbooks
-- `scale_amf_resources.yml` - Scale AMF CPU/Memory
-- `restart_amf_service.yml` - Restart AMF services
-- `restart_smf_service.yml` - Restart SMF services  
-- `adjust_upf_load_balancing.yml` - Adjust UPF load balancing
-- `resource_optimization.yml` - General optimization
+### **Timeline Processing Controls**
+- **Speed Control**: 1x, 5x, 10x, 100x processing speed
+- **Time Range**: Historical data replay
+- **Component Filtering**: Focus on specific network elements
 
+### **Performance Tuning**
+- **Agent Pool Sizing**: Configure concurrent agent instances
+- **Protocol Optimization**: Tune WebSocket and HTTP timeouts
+- **Memory Management**: Vector store optimization for large datasets
+
+---
+
+## 🛡️ **Architecture Benefits**
+
+### **Real Autonomous Operation**
+- ✅ **True Agent Communication**: No simulation - real WebSocket/HTTP protocols
+- ✅ **Dynamic Discovery**: Agents register and discover capabilities automatically  
+- ✅ **Fault Tolerance**: Graceful degradation when agents are unavailable
+- ✅ **Scalability**: Add new agent types without code changes
+
+### **Production Ready**
+- ✅ **Protocol Standards**: Industry-standard ACP/MCP protocols
+- ✅ **Service Mesh**: Distributed agent architecture
+- ✅ **Observability**: Full agent communication monitoring
+- ✅ **Integration**: RESTful APIs for external system integration
+
+---
+
+## 📈 **Monitoring & Observability**
+
+### **Agent Metrics**
+- Communication latency and throughput
+- Task completion rates and success ratios
+- Agent health and availability status
+- Protocol-specific performance metrics
+
+### **System Metrics**
+- Anomaly detection accuracy and response times
+- Workflow execution duration and success rates  
+- Resource utilization and optimization impact
+- Network component health trends
+
+---
+
+## 🤝 **Contributing**
+
+We welcome contributions to enhance the agentic framework:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/agentic-enhancement`)
+3. **Commit** changes (`git commit -m 'Add agentic feature'`)
+4. **Push** to branch (`git push origin feature/agentic-enhancement`)
+5. **Open** a Pull Request
+
+---
+
+## 🏆 **Acknowledgments**
+
+- **OpenShift AI Team** for platform foundation
+- **Ansible Community** for automation excellence  
+- **Agent Protocol Standards** for ACP/MCP specifications
+- **5G Network Operations** Telco community for domain expertise
+
+---

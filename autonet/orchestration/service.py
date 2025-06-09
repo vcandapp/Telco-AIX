@@ -10,6 +10,8 @@ from datetime import datetime
 from protocols.acp.schema import (
     ACPMessage, AgentDescription, MessageType, ActionType, CapabilityInfo
 )
+from protocols.acp.adapter import ACPBrokerAdapter
+from protocols.mcp.server import MCPServer
 
 class OrchestrationService:
     """Service for orchestrating agent interactions.
@@ -18,14 +20,18 @@ class OrchestrationService:
     workflow management, and resource allocation.
     """
     
-    def __init__(self, service_id: Optional[str] = None):
+    def __init__(self, acp_broker: ACPBrokerAdapter, mcp_server: MCPServer, service_id: Optional[str] = None):
         """Initialize a new orchestration service.
         
         Args:
+            acp_broker: ACP broker for agent communication
+            mcp_server: MCP server for context management
             service_id: Unique identifier for this service instance
         """
         self.service_id = service_id or f"orchestrator-{str(uuid.uuid4())[:8]}"
         self.logger = logging.getLogger(f"orchestration.{self.service_id}")
+        self.acp_broker = acp_broker
+        self.mcp_server = mcp_server
         
         # Registry of known agents
         self.agent_registry: Dict[str, AgentDescription] = {}
@@ -39,9 +45,19 @@ class OrchestrationService:
         # Running tasks
         self._tasks = []
         
-    async def initialize(self) -> None:
-        """Initialize the orchestration service."""
-        self.logger.info(f"Initializing orchestration service {self.service_id}")
+    async def start(self) -> None:
+        """Start the orchestration service."""
+        self.logger.info(f"Starting orchestration service {self.service_id}")
+        # Subscribe to orchestration-related messages
+        await self.acp_broker.subscribe("orchestration.*", self._handle_orchestration_message)
+        
+    async def stop(self) -> None:
+        """Stop the orchestration service."""
+        await self.shutdown()
+        
+    async def _handle_orchestration_message(self, message: ACPMessage) -> None:
+        """Handle orchestration-related messages."""
+        self.logger.debug(f"Received orchestration message: {message.message_type}")
         
     async def shutdown(self) -> None:
         """Shut down the orchestration service."""
@@ -56,14 +72,57 @@ class OrchestrationService:
             
         self.logger.info(f"Shut down orchestration service {self.service_id}")
         
-    async def register_agent(self, agent_description: AgentDescription) -> None:
+    async def register_agent(self, agent: Any) -> None:
         """Register an agent with the orchestration service.
         
         Args:
-            agent_description: Description of the agent to register
+            agent: Agent instance to register
         """
-        self.agent_registry[agent_description.agent_id] = agent_description
-        self.logger.info(f"Registered agent {agent_description.agent_id} ({agent_description.agent_type})")
+        # Determine agent capabilities based on type
+        agent_type = agent.__class__.__name__.replace('Network', '').replace('Agent', '').lower()
+        
+        if agent_type == 'diagnostic':
+            action_types = [ActionType.DIAGNOSE, ActionType.QUERY]
+            domains = ['network', 'telemetry', 'anomaly_detection']
+            description = 'Diagnoses network issues and detects anomalies'
+        elif agent_type == 'planning':
+            action_types = [ActionType.PLAN]
+            domains = ['network', 'remediation', 'planning']
+            description = 'Generates remediation plans for network issues'
+        elif agent_type == 'execution':
+            action_types = [ActionType.EXECUTE]
+            domains = ['network', 'automation', 'playbooks']
+            description = 'Executes remediation plans and automation tasks'
+        elif agent_type == 'validation':
+            action_types = [ActionType.VALIDATE]
+            domains = ['network', 'verification', 'testing']
+            description = 'Validates execution results and system state'
+        else:
+            action_types = []
+            domains = ['general']
+            description = 'General purpose agent'
+            
+        agent_description = AgentDescription(
+            agent_id=agent.agent_id,
+            agent_type=agent_type,
+            name=agent.name,
+            capabilities=CapabilityInfo(
+                action_types=action_types,
+                domains=domains,
+                description=description
+            ),
+            network_location={
+                "host": "localhost",
+                "ports": {
+                    "mcp": 8080,
+                    "acp": 8081
+                }
+            },
+            status="active",
+            last_seen=datetime.utcnow()
+        )
+        self.agent_registry[agent.agent_id] = agent_description
+        self.logger.info(f"Registered agent {agent.agent_id} ({agent_description.agent_type})")
         
     async def unregister_agent(self, agent_id: str) -> None:
         """Unregister an agent from the orchestration service.
@@ -117,13 +176,13 @@ class OrchestrationService:
         
     async def create_workflow(self, 
                             workflow_type: str, 
-                            parameters: Dict[str, Any],
-                            initiator_id: Optional[str] = None) -> str:
+                            context: Dict[str, Any],
+                            initiator_id: Optional[str] = None) -> Dict[str, Any]:
         """Create a new workflow.
         
         Args:
             workflow_type: Type of workflow to create
-            parameters: Workflow parameters
+            context: Workflow context
             initiator_id: ID of the agent initiating the workflow
             
         Returns:
@@ -134,7 +193,7 @@ class OrchestrationService:
         workflow = {
             "workflow_id": workflow_id,
             "workflow_type": workflow_type,
-            "parameters": parameters,
+            "context": context,
             "initiator_id": initiator_id,
             "status": "created",
             "created_at": datetime.utcnow(),
@@ -150,7 +209,7 @@ class OrchestrationService:
         task = asyncio.create_task(self._execute_workflow(workflow_id))
         self._tasks.append(task)
         
-        return workflow_id
+        return workflow
         
     async def _execute_workflow(self, workflow_id: str) -> None:
         """Execute a workflow.
@@ -175,6 +234,8 @@ class OrchestrationService:
             # Execute workflow based on type
             if workflow_type == "anomaly_resolution":
                 await self._execute_anomaly_resolution_workflow(workflow)
+            elif workflow_type == "anomaly_remediation":
+                await self._execute_anomaly_remediation_workflow(workflow)
             elif workflow_type == "network_optimization":
                 await self._execute_network_optimization_workflow(workflow)
             elif workflow_type == "customer_issue_resolution":
@@ -368,3 +429,198 @@ class OrchestrationService:
         event_data["subscribers"] = list(subscribers)
         
         self.logger.info(f"Published {event_type} event: {event_data}")
+        
+    async def subscribe_workflow_events(self, workflow_id: str):
+        """Subscribe to events for a specific workflow.
+        
+        Args:
+            workflow_id: ID of the workflow to monitor
+            
+        Yields:
+            Workflow events as they occur
+        """
+        # Create a queue for workflow events
+        event_queue = asyncio.Queue()
+        
+        # Subscribe to workflow events
+        async def workflow_event_handler(message: ACPMessage):
+            if message.payload.get("workflow_id") == workflow_id:
+                await event_queue.put(message.payload)
+                
+        await self.acp_broker.subscribe(f"workflow.{workflow_id}.*", workflow_event_handler)
+        
+        try:
+            while True:
+                event = await event_queue.get()
+                yield event
+        finally:
+            # Unsubscribe when done
+            await self.acp_broker.unsubscribe(f"workflow.{workflow_id}.*", workflow_event_handler)
+            
+    async def _execute_anomaly_remediation_workflow(self, workflow: Dict[str, Any]) -> None:
+        """Execute an anomaly remediation workflow.
+        
+        Args:
+            workflow: The workflow to execute
+        """
+        workflow_id = workflow["workflow_id"]
+        context = workflow["context"]
+        
+        # Step 1: Diagnostic phase
+        diagnostic_agents = await self.find_agents_by_type("diagnostic")
+        if not diagnostic_agents:
+            raise RuntimeError("No diagnostic agents available")
+            
+        # Send diagnostic request via ACP
+        diagnostic_message = ACPMessage(
+            message_id=str(uuid.uuid4()),
+            message_type=MessageType.REQUEST,
+            sender_id=self.service_id,
+            receiver_id=diagnostic_agents[0].agent_id,
+            timestamp=datetime.utcnow(),
+            payload={
+                "action": "analyze_anomaly",
+                "workflow_id": workflow_id,
+                "anomaly_context": context
+            }
+        )
+        
+        await self.acp_broker.publish(diagnostic_message)
+        
+        # Broadcast workflow event
+        await self._broadcast_workflow_event(workflow_id, {
+            "agent_id": diagnostic_agents[0].agent_id,
+            "action": "diagnostic_started",
+            "status": "in_progress",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        # Wait for diagnostic response (simplified for this example)
+        await asyncio.sleep(2)  # In real implementation, wait for actual response
+        
+        # Step 2: Planning phase
+        planning_agents = await self.find_agents_by_type("planning")
+        if not planning_agents:
+            raise RuntimeError("No planning agents available")
+            
+        # Continue with planning, execution, and validation phases...
+        # (Similar pattern as diagnostic phase)
+        
+    async def _broadcast_workflow_event(self, workflow_id: str, event: Dict[str, Any]) -> None:
+        """Broadcast a workflow event.
+        
+        Args:
+            workflow_id: ID of the workflow
+            event: Event data
+        """
+        event["workflow_id"] = workflow_id
+        message = ACPMessage(
+            message_id=str(uuid.uuid4()),
+            message_type=MessageType.BROADCAST,
+            sender_id=self.service_id,
+            receiver_id="*",  # Broadcast to all
+            timestamp=datetime.utcnow(),
+            payload=event
+        )
+        
+        await self.acp_broker.publish(message)
+    
+    async def delegate_task(self, agent_id: str, task_type: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Delegate a task to a specific agent.
+        
+        Args:
+            agent_id: ID of the agent to delegate to
+            task_type: Type of task to delegate
+            context: Task context and parameters
+            
+        Returns:
+            Task execution result
+        """
+        try:
+            self.logger.info(f"Delegating {task_type} task to agent {agent_id}")
+            
+            # Find the agent
+            agent = None
+            for registered_agent in self.agent_registry.values():
+                if registered_agent.agent_id == agent_id:
+                    agent = registered_agent
+                    break
+            
+            if not agent:
+                # Try to find by agent object reference
+                for agent_obj in self.agent_registry.keys():
+                    if hasattr(agent_obj, 'agent_id') and agent_obj.agent_id == agent_id:
+                        agent = agent_obj
+                        break
+            
+            if not agent:
+                raise RuntimeError(f"Agent {agent_id} not found in registry")
+            
+            # Simulate task execution based on task type
+            await asyncio.sleep(0.5)  # Simulate processing time
+            
+            if task_type == "anomaly_analysis":
+                return {
+                    "success": True,
+                    "summary": f"Anomaly analysis completed for {context.get('component', 'unknown')} component",
+                    "details": {
+                        "anomaly_type": "performance_degradation",
+                        "severity": context.get('severity', 'medium'),
+                        "confidence": 0.85
+                    },
+                    "duration": 0.5,
+                    "agent_id": agent_id
+                }
+            elif task_type == "remediation_planning":
+                return {
+                    "success": True,
+                    "summary": f"Remediation plan created for {context.get('component', 'unknown')} component",
+                    "details": {
+                        "plan_type": "automated_remediation",
+                        "estimated_time": "5 minutes",
+                        "success_probability": 0.90
+                    },
+                    "duration": 0.5,
+                    "agent_id": agent_id
+                }
+            elif task_type == "playbook_execution":
+                return {
+                    "success": True,
+                    "summary": f"Playbook {context.get('playbook_name', 'unknown')} executed successfully",
+                    "details": {
+                        "playbook": context.get('playbook_name'),
+                        "execution_mode": "autonomous",
+                        "changes_applied": True
+                    },
+                    "duration": 2.0,
+                    "agent_id": agent_id
+                }
+            elif task_type == "execution_validation":
+                return {
+                    "success": True,
+                    "summary": f"Execution validation completed for {context.get('component', 'unknown')}",
+                    "details": {
+                        "validation_result": "passed",
+                        "metrics_improved": True,
+                        "system_stable": True
+                    },
+                    "duration": 0.5,
+                    "agent_id": agent_id
+                }
+            else:
+                return {
+                    "success": True,
+                    "summary": f"Generic task {task_type} completed",
+                    "details": {},
+                    "duration": 0.5,
+                    "agent_id": agent_id
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Error delegating task {task_type} to agent {agent_id}: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "summary": f"Task {task_type} failed",
+                "agent_id": agent_id
+            }

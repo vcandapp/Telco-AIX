@@ -65,7 +65,7 @@ class ACPMessage(BaseModel):
     payload: Dict[str, Any] = Field(..., description="The actual message content")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "header": {
                     "message_id": "msg-1234",

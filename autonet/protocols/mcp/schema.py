@@ -45,7 +45,7 @@ class MCPContext(BaseModel):
     payload: Dict[str, Any] = Field(..., description="The actual context data")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "header": {
                     "source_id": "diagnostic-agent-1",

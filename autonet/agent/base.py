@@ -47,6 +47,12 @@ class Agent(ABC):
         self.logger = logging.getLogger(f"agent.{self.agent_id}")
         self._event_loop = None
         self._tasks = []
+        self.status = "initializing"
+        self.metrics = {
+            "messages_processed": 0,
+            "errors": 0,
+            "last_activity": None
+        }
         
     async def initialize(self) -> None:
         """Initialize the agent and prepare it for operation."""
@@ -148,6 +154,10 @@ class Agent(ABC):
             "state": self.state.value,
             "capabilities": self.get_capabilities()
         }
+        
+    async def get_metrics(self) -> Dict[str, Any]:
+        """Return the current metrics of the agent."""
+        return self.metrics
 
 class DiagnosticAgent(Agent):
     """Base class for diagnostic agents that monitor and analyze network conditions."""
