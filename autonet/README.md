@@ -162,7 +162,7 @@ Navigate to: **http://localhost:30080**
 - Agent performance metrics
 - Protocol status (ACP/MCP)
 
-![Agent Topology](./images/n2.png)
+![Agent Topology](./images/n21.png)
 
 ### **🔄 Active Workflows**
 - Live workflow execution status
