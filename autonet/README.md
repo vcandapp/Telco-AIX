@@ -62,7 +62,7 @@ A **real autonomous 5G network operations system** featuring distributed AI agen
                   ▼                               ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │               📊 Enhanced NOC Dashboard (Real-time)                     │
-│   Agent Topology • Live Metrics • Workflow Status • Performance        │
+│   Agent Topology • Live Metrics • Workflow Status • Performance         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -253,32 +253,6 @@ spec:
 
 ---
 
-## 🔧 **Advanced Features**
-
-### **Agent Communication Monitoring**
-```bash
-# Monitor ACP WebSocket connections
-curl -s http://localhost:8765/agents
-
-# Check MCP server status  
-curl -s http://localhost:3000/health
-
-# Orchestration service metrics
-curl -s http://localhost:30080/api/enhanced-agent-topology
-```
-
-### **Timeline Processing Controls**
-- **Speed Control**: 1x, 5x, 10x, 100x processing speed
-- **Time Range**: Historical data replay
-- **Component Filtering**: Focus on specific network elements
-
-### **Performance Tuning**
-- **Agent Pool Sizing**: Configure concurrent agent instances
-- **Protocol Optimization**: Tune WebSocket and HTTP timeouts
-- **Memory Management**: Vector store optimization for large datasets
-
----
-
 ## 🛡️ **Architecture Benefits**
 
 ### **Real Autonomous Operation**
@@ -308,26 +282,5 @@ curl -s http://localhost:30080/api/enhanced-agent-topology
 - Workflow execution duration and success rates  
 - Resource utilization and optimization impact
 - Network component health trends
-
----
-
-## 🤝 **Contributing**
-
-We welcome contributions to enhance the agentic framework:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/agentic-enhancement`)
-3. **Commit** changes (`git commit -m 'Add agentic feature'`)
-4. **Push** to branch (`git push origin feature/agentic-enhancement`)
-5. **Open** a Pull Request
-
----
-
-## 🏆 **Acknowledgments**
-
-- **OpenShift AI Team** for platform foundation
-- **Ansible Community** for automation excellence  
-- **Agent Protocol Standards** for ACP/MCP specifications
-- **5G Network Operations** Telco community for domain expertise
 
 ---
