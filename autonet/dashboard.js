@@ -322,44 +322,12 @@ function initEnhancedAgentTopology() {
     
     // Enhanced agent configuration with MCP backend info
     const agents = [
-        {
-            id: 'diagnostic', 
-            name: 'Diagnostic',
-            x: 120, y: 120, 
-            color: '#3b82f6',
-            icon: '🔍',
-            mcpBackend: 'local',
-            status: 'active'
-        },
-        {
-            id: 'planning', 
-            name: 'Planning',
-            x: 450, y: 120, 
-            color: '#10b981',
-            icon: '📋',
-            mcpBackend: 'local',
-            status: 'active'
-        },
-        {
-            id: 'execution', 
-            name: 'Execution',
-            x: 450, y: 350, 
-            color: '#f59e0b',
-            icon: '⚡',
-            mcpBackend: 'local',
-            status: 'processing'
-        },
-        {
-            id: 'validation', 
-            name: 'Validation',
-            x: 120, y: 350, 
-            color: '#8b5cf6',
-            icon: '✅',
-            mcpBackend: 'local',
-            status: 'active'
-        }
+    { id: 'diagnostic', name: 'Diagnostic', x: 620, y: 120, color: '#3b82f6', icon: '🔍', mcpBackend: 'local', status: 'active' },
+    { id: 'planning', name: 'Planning', x: 980, y: 120, color: '#10b981', icon: '📋', mcpBackend: 'local', status: 'active' },
+    { id: 'execution', name: 'Execution', x: 980, y: 440, color: '#f59e0b', icon: '⚡', mcpBackend: 'local', status: 'processing' },
+    { id: 'validation', name: 'Validation', x: 620, y: 440, color: '#8b5cf6', icon: '✅', mcpBackend: 'local', status: 'active' }
     ];
-    
+ 
     // Store agents for global access
     window.topologyAgents = agents;
     
@@ -390,7 +358,7 @@ function createEnhancedTopologyVisualization(topology, agents) {
     // Set SVG dimensions
     svg.style.width = '100%';
     svg.style.height = '100%';
-    svg.setAttribute('viewBox', '0 0 600 500');
+    svg.setAttribute('viewBox', '0 0 1600 600');
     
     // Create agent nodes
     agents.forEach(agent => {
@@ -487,7 +455,7 @@ function createProtocolConnections(svg, agents) {
     ];
     
     // MCP connections (all agents to central MCP backend)
-    const mcpCenter = { x: 300, y: 240 }; // Center of the topology
+    const mcpCenter = { x: 800, y: 280 }; // Center of the topology
     
     connections.forEach(conn => {
         const fromAgent = agents.find(a => a.id === conn.from);
