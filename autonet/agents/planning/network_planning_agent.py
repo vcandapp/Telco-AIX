@@ -19,7 +19,8 @@ class NetworkPlanningAgent(PlanningAgent):
     def __init__(self, agent_id: Optional[str] = None, name: str = None,
                  mcp_url: str = "http://localhost:8000",
                  acp_broker_url: str = "http://localhost:8002",
-                 config: Dict[str, Any] = None):
+                 config: Dict[str, Any] = None,
+                 mcp_config_path: Optional[str] = None):
         """Initialize a new network planning agent.
         
         Args:
@@ -28,6 +29,7 @@ class NetworkPlanningAgent(PlanningAgent):
             mcp_url: URL for the MCP server
             acp_broker_url: URL for the ACP message broker
             config: Additional configuration
+            mcp_config_path: Path to MCP configuration file
         """
         super().__init__(
             agent_id=agent_id,
@@ -38,6 +40,7 @@ class NetworkPlanningAgent(PlanningAgent):
         
         self.mcp_url = mcp_url
         self.acp_broker_url = acp_broker_url
+        self.mcp_config_path = mcp_config_path
         
         # Clients for communication
         self.mcp_client = None
@@ -45,10 +48,12 @@ class NetworkPlanningAgent(PlanningAgent):
         
     async def _initialize(self) -> None:
         """Initialize the agent."""
-        # Initialize MCP client
-        self.mcp_client = MCPClient(
+        # Initialize MCP client with configurable backends
+        from protocols.mcp.migration_helper import create_mcp_client
+        self.mcp_client = create_mcp_client(
             client_id=self.agent_id,
-            base_url=self.mcp_url
+            base_url=self.mcp_url,  # Legacy parameter for compatibility
+            config_path=self.mcp_config_path
         )
         await self.mcp_client.initialize()
         

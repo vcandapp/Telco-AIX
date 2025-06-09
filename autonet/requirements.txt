@@ -30,6 +30,9 @@ langchain-community>=0.0.20
 # Vector storage and embeddings
 faiss-cpu>=1.7.4
 
+# MCP Backend System dependencies
+aiofiles>=23.1.0
+
 # Optional: Ansible for real playbook execution
 # ansible>=8.0.0  # Uncomment if you want to install Ansible
 

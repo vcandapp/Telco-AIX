@@ -526,34 +526,62 @@
             background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
         }
         
-        /* Enhanced Agent Topology Styles */
+        /* Enhanced Agent Topology Styles with MCP/ACP Visualization */
         .enhanced-agent-topology {
             position: relative;
             overflow: hidden;
+            background: radial-gradient(circle at 30% 40%, #1a2332 0%, #0f1419 100%);
+            border: 1px solid #374151;
         }
         
         .enhanced-agent-node {
             position: absolute;
-            width: 100px;
-            height: 100px;
+            width: 110px;
+            height: 110px;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            font-size: 0.8em;
+            font-size: 0.75em;
             color: white;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             border: 3px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            z-index: 5;
+        }
+        
+        .enhanced-agent-node::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            z-index: -1;
+            animation: node-shimmer 3s ease-in-out infinite;
         }
         
         .enhanced-agent-node:hover {
-            transform: scale(1.15);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
-            z-index: 10;
+            transform: scale(1.2) translateZ(0);
+            box-shadow: 0 16px 48px rgba(59, 130, 246, 0.6), 0 0 32px rgba(59, 130, 246, 0.3);
+            z-index: 15;
+            border-color: #3b82f6;
+        }
+        
+        .enhanced-agent-node.active {
+            border-color: #10b981;
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+        }
+        
+        .enhanced-agent-node.processing {
+            border-color: #f59e0b;
+            animation: processing-pulse 1.5s ease-in-out infinite;
         }
         
         .enhanced-agent-node.critical {
@@ -566,14 +594,213 @@
             animation: warning-pulse 3s infinite;
         }
         
+        /* Protocol Connection Lines */
+        .protocol-connection {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .acp-connection {
+            stroke: #3b82f6;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            opacity: 0.7;
+            filter: drop-shadow(0 0 4px #3b82f6);
+        }
+        
+        .mcp-connection {
+            stroke: #10b981;
+            stroke-width: 2;
+            stroke-dasharray: 8,3;
+            opacity: 0.7;
+            filter: drop-shadow(0 0 4px #10b981);
+        }
+        
+        /* Animated Data Flow Particles */
+        .data-flow-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 3;
+        }
+        
+        .acp-particle {
+            background: #3b82f6;
+            box-shadow: 0 0 8px #3b82f6;
+            animation: particle-flow-acp 2s linear infinite;
+        }
+        
+        .mcp-particle {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: particle-flow-mcp 3s linear infinite;
+        }
+        
+        /* Protocol Status Indicators */
+        .protocol-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+        }
+        
+        .protocol-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 10px;
+            border-radius: 15px;
+            font-size: 0.75em;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .protocol-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: protocol-heartbeat 2s ease-in-out infinite;
+        }
+        
+        .acp-indicator .protocol-dot {
+            background: #3b82f6;
+            box-shadow: 0 0 8px #3b82f6;
+        }
+        
+        .mcp-indicator .protocol-dot {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+        
+        /* Communication Flow Overlay */
+        .communication-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        /* Agent Status Badge */
+        .agent-status-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            z-index: 6;
+        }
+        
+        .agent-mcp-status {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.6em;
+            border: 1px solid;
+            backdrop-filter: blur(5px);
+        }
+        
+        .mcp-local { border-color: #6b7280; color: #d1d5db; }
+        .mcp-anthropic { border-color: #8b5cf6; color: #c4b5fd; }
+        .mcp-openai { border-color: #10b981; color: #6ee7b7; }
+        .mcp-huggingface { border-color: #f59e0b; color: #fcd34d; }
+        
+        /* Animations */
+        @keyframes node-shimmer {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        @keyframes processing-pulse {
+            0%, 100% { 
+                border-color: #f59e0b;
+                box-shadow: 0 8px 32px rgba(245, 158, 11, 0.4);
+            }
+            50% { 
+                border-color: #fbbf24;
+                box-shadow: 0 12px 40px rgba(245, 158, 11, 0.8);
+            }
+        }
+        
         @keyframes critical-pulse {
-            0%, 100% { box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
-            50% { box-shadow: 0 8px 30px rgba(239, 68, 68, 0.7); }
+            0%, 100% { 
+                border-color: #ef4444;
+                box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+            }
+            50% { 
+                border-color: #f87171;
+                box-shadow: 0 12px 40px rgba(239, 68, 68, 0.8);
+            }
         }
         
         @keyframes warning-pulse {
-            0%, 100% { box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
-            50% { box-shadow: 0 8px 30px rgba(245, 158, 11, 0.6); }
+            0%, 100% { 
+                border-color: #f59e0b;
+                box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+            }
+            50% { 
+                border-color: #fbbf24;
+                box-shadow: 0 12px 40px rgba(245, 158, 11, 0.6);
+            }
+        }
+        
+        @keyframes particle-flow-acp {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        @keyframes particle-flow-mcp {
+            0% { opacity: 0; }
+            15% { opacity: 1; }
+            85% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        @keyframes protocol-heartbeat {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        
+        /* Network Background Pattern */
+        .network-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                radial-gradient(circle at 20% 20%, #3b82f6 1px, transparent 1px),
+                radial-gradient(circle at 80% 80%, #10b981 1px, transparent 1px),
+                radial-gradient(circle at 60% 30%, #8b5cf6 1px, transparent 1px);
+            background-size: 50px 50px, 60px 60px, 40px 40px;
+            animation: background-drift 20s linear infinite;
+        }
+        
+        @keyframes background-drift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-20px, -20px); }
         }
         
         .agent-metrics-overlay {
@@ -945,19 +1172,128 @@
                     </div>
                 </div>
                 
+                <!-- MCP Backend Configuration Panel -->
+                <div class="mcp-backend-panel" style="margin-bottom: 25px; background: linear-gradient(135deg, #1f2937 0%, #374151 100%); border-radius: 12px; padding: 20px; border: 1px solid #4b5563;">
+                    <h3 style="color: #10b981; margin-bottom: 15px; display: flex; align-items: center;">
+                        <span style="margin-right: 10px;">🔧</span>
+                        MCP Backend Configuration
+                    </h3>
+                    
+                    <div class="backend-overview" style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;">
+                        <!-- Active Backend Info -->
+                        <div class="active-backend-info">
+                            <div class="backend-status" style="background: #065f46; border-radius: 8px; padding: 15px; border: 1px solid #10b981;">
+                                <h4 style="color: #10b981; margin-bottom: 10px; font-size: 0.95em;">🟢 Active Backend</h4>
+                                <div class="backend-details">
+                                    <div class="backend-name" id="active-backend-name" style="font-size: 1.2em; font-weight: bold; color: #ffffff; margin-bottom: 8px;">
+                                        Local Storage
+                                    </div>
+                                    <div class="backend-type" id="active-backend-type" style="color: #d1fae5; font-size: 0.9em; margin-bottom: 5px;">
+                                        Type: local
+                                    </div>
+                                    <div class="backend-health" id="active-backend-health" style="color: #6ee7b7; font-size: 0.85em;">
+                                        ✅ Healthy • 0ms latency
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="backend-stats" style="margin-top: 15px; background: #1f2937; border-radius: 8px; padding: 12px;">
+                                <div style="font-size: 0.9em; color: #9ca3af; margin-bottom: 8px;">Backend Statistics</div>
+                                <div class="stat-item" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #d1d5db;">Contexts Stored:</span>
+                                    <span id="contexts-count" style="color: #60a5fa;">0</span>
+                                </div>
+                                <div class="stat-item" style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #d1d5db;">Operations/min:</span>
+                                    <span id="operations-per-min" style="color: #34d399;">0</span>
+                                </div>
+                                <div class="stat-item" style="display: flex; justify-content: space-between;">
+                                    <span style="color: #d1d5db;">Uptime:</span>
+                                    <span id="backend-uptime" style="color: #fbbf24;">0m</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Available Backends Grid -->
+                        <div class="available-backends">
+                            <h4 style="color: #e5e7eb; margin-bottom: 12px; font-size: 0.95em;">Available Backends</h4>
+                            <div class="backends-grid" id="backends-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                                <!-- Backend cards will be populated by JavaScript -->
+                            </div>
+                            
+                            <div class="backend-capabilities" style="margin-top: 15px;">
+                                <h4 style="color: #e5e7eb; margin-bottom: 10px; font-size: 0.9em;">Active Backend Capabilities</h4>
+                                <div class="capabilities-list" id="capabilities-list" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    <!-- Capability badges will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Backend Switching Panel -->
+                    <div class="backend-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #4b5563;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="color: #9ca3af; font-size: 0.9em;">Quick Backend Switch:</span>
+                                <select id="backend-selector" style="margin-left: 10px; background: #374151; color: #ffffff; border: 1px solid #6b7280; border-radius: 6px; padding: 5px 10px;">
+                                    <option value="local">Local Storage</option>
+                                    <!-- Options will be populated by JavaScript -->
+                                </select>
+                            </div>
+                            <div>
+                                <button onclick="refreshBackendStatus()" style="background: #1d4ed8; color: white; border: none; border-radius: 6px; padding: 8px 15px; font-size: 0.85em; margin-right: 8px;">
+                                    🔄 Refresh Status
+                                </button>
+                                <button onclick="showBackendDetails()" style="background: #059669; color: white; border: none; border-radius: 6px; padding: 8px 15px; font-size: 0.85em;">
+                                    📊 View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Interactive Topology Visualization -->
-                <div class="enhanced-agent-topology" id="enhanced-agent-topology" style="height: 500px; position: relative; background: #111827; border-radius: 8px; padding: 20px;">
-                    <!-- Agents will be positioned by JavaScript with enhanced interactions -->
+                <div class="enhanced-agent-topology" id="enhanced-agent-topology" style="height: 600px; position: relative; border-radius: 12px; padding: 20px;">
+                    <!-- Network Background Pattern -->
+                    <div class="network-background"></div>
+                    
+                    <!-- Protocol Status Indicators -->
+                    <div class="protocol-status">
+                        <div class="protocol-indicator acp-indicator">
+                            <div class="protocol-dot"></div>
+                            <span>ACP WebSocket</span>
+                        </div>
+                        <div class="protocol-indicator mcp-indicator">
+                            <div class="protocol-dot"></div>
+                            <span id="mcp-protocol-label">MCP Local</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Communication Flow Overlay (SVG for connections) -->
+                    <svg class="communication-overlay" id="communication-svg">
+                        <!-- Connection lines will be drawn here -->
+                    </svg>
+                    
+                    <!-- Agent Nodes Container -->
+                    <div id="agent-nodes-container">
+                        <!-- Agents will be positioned by JavaScript with enhanced interactions -->
+                    </div>
                     
                     <!-- Floating Agent Details Panel -->
-                    <div id="agent-details-panel" class="agent-details-panel" style="display: none;">
-                        <div class="panel-header">
-                            <h4 id="panel-agent-name">Agent Details</h4>
-                            <button onclick="closeAgentPanel()" style="background: none; border: none; color: #fff; font-size: 1.2em;">×</button>
+                    <div id="agent-details-panel" class="agent-details-panel" style="display: none; position: absolute; background: rgba(0,0,0,0.9); border: 1px solid #374151; border-radius: 12px; padding: 20px; min-width: 300px; backdrop-filter: blur(10px); z-index: 20;">
+                        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #374151; padding-bottom: 10px;">
+                            <h4 id="panel-agent-name" style="color: #3b82f6; margin: 0;">Agent Details</h4>
+                            <button onclick="closeAgentPanel()" style="background: none; border: none; color: #fff; font-size: 1.5em; cursor: pointer; padding: 0; width: 24px; height: 24px;">×</button>
                         </div>
                         <div class="panel-content" id="panel-content">
                             <!-- Dynamic content -->
                         </div>
+                    </div>
+                    
+                    <!-- Real-time Communication Activity Indicator -->
+                    <div id="activity-indicator" style="position: absolute; bottom: 15px; left: 15px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 20px; backdrop-filter: blur(10px);">
+                        <div id="activity-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: protocol-heartbeat 1s ease-in-out infinite;"></div>
+                        <span id="activity-text" style="font-size: 0.75em; color: #d1d5db;">System Active</span>
                     </div>
                 </div>
             </div>

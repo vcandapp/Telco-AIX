@@ -320,130 +320,429 @@ function initEnhancedAgentTopology() {
     const topology = document.getElementById('enhanced-agent-topology');
     if (!topology) return;
     
+    // Enhanced agent configuration with MCP backend info
     const agents = [
-        {id: 'diagnostic', x: 80, y: 80, color: '#3b82f6'},
-        {id: 'planning', x: 320, y: 80, color: '#10b981'},
-        {id: 'execution', x: 560, y: 80, color: '#f59e0b'},
-        {id: 'validation', x: 320, y: 280, color: '#ef4444'}
+        {
+            id: 'diagnostic', 
+            name: 'Diagnostic',
+            x: 120, y: 120, 
+            color: '#3b82f6',
+            icon: '🔍',
+            mcpBackend: 'local',
+            status: 'active'
+        },
+        {
+            id: 'planning', 
+            name: 'Planning',
+            x: 450, y: 120, 
+            color: '#10b981',
+            icon: '📋',
+            mcpBackend: 'local',
+            status: 'active'
+        },
+        {
+            id: 'execution', 
+            name: 'Execution',
+            x: 450, y: 350, 
+            color: '#f59e0b',
+            icon: '⚡',
+            mcpBackend: 'local',
+            status: 'processing'
+        },
+        {
+            id: 'validation', 
+            name: 'Validation',
+            x: 120, y: 350, 
+            color: '#8b5cf6',
+            icon: '✅',
+            mcpBackend: 'local',
+            status: 'active'
+        }
     ];
     
-    // Clear existing content
-    topology.innerHTML = '';
+    // Store agents for global access
+    window.topologyAgents = agents;
     
-    // Create enhanced agent nodes
-    agents.forEach(agent => {
-        const nodeEl = createEnhancedAgentNode(agent);
-        topology.appendChild(nodeEl);
-    });
-    
-    // Create connections
-    createEnhancedConnections(topology);
+    // Create enhanced visualization
+    createEnhancedTopologyVisualization(topology, agents);
     
     // Initialize network analytics chart
     initNetworkChart();
     
     // Start data flow animation
     startDataFlowAnimation();
+    
+    // Update MCP protocol label
+    updateMCPProtocolLabel();
+}
+
+// Create enhanced topology visualization with MCP/ACP flows
+function createEnhancedTopologyVisualization(topology, agents) {
+    const container = document.getElementById('agent-nodes-container');
+    const svg = document.getElementById('communication-svg');
+    
+    if (!container || !svg) return;
+    
+    // Clear existing content
+    container.innerHTML = '';
+    svg.innerHTML = '';
+    
+    // Set SVG dimensions
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.setAttribute('viewBox', '0 0 600 500');
+    
+    // Create agent nodes
+    agents.forEach(agent => {
+        const nodeEl = createEnhancedAgentNode(agent);
+        container.appendChild(nodeEl);
+    });
+    
+    // Create protocol connections
+    createProtocolConnections(svg, agents);
+    
+    // Start particle animations
+    startParticleFlows(svg, agents);
 }
 
 function createEnhancedAgentNode(agent) {
     const nodeEl = document.createElement('div');
-    nodeEl.className = 'enhanced-agent-node';
+    nodeEl.className = `enhanced-agent-node ${agent.status}`;
     nodeEl.id = `enhanced-agent-${agent.id}`;
     nodeEl.style.left = agent.x + 'px';
     nodeEl.style.top = agent.y + 'px';
     nodeEl.style.background = `linear-gradient(135deg, ${agent.color}, ${adjustBrightness(agent.color, -20)})`;
     
+    // Status badge
+    const statusColor = getAgentStatusColor(agent.status);
+    const statusIcon = getAgentStatusIcon(agent.status);
+    
     nodeEl.innerHTML = `
-        <div style="font-size: 0.9em; font-weight: 700;">${agent.id.toUpperCase()}</div>
-        <div class="agent-metrics-overlay" id="metrics-${agent.id}">
-            <div>CPU: 0%</div>
-            <div>Queue: 0</div>
+        <div style="font-size: 1.2em; margin-bottom: 2px;">${agent.icon}</div>
+        <div style="font-size: 0.75em; font-weight: 700; line-height: 1.1;">${agent.name.toUpperCase()}</div>
+        <div class="agent-status-badge" style="background: ${statusColor};">
+            ${statusIcon}
+        </div>
+        <div class="agent-mcp-status mcp-${agent.mcpBackend}">
+            ${getMCPBackendDisplayName(agent.mcpBackend)}
         </div>
     `;
     
     // Add click handler for detailed view
     nodeEl.addEventListener('click', () => showAgentDetails(agent.id));
     
+    // Add hover effects
+    nodeEl.addEventListener('mouseenter', () => {
+        highlightAgentConnections(agent.id, true);
+        updateActivityIndicator(`${agent.name} Agent Active`);
+    });
+    
+    nodeEl.addEventListener('mouseleave', () => {
+        highlightAgentConnections(agent.id, false);
+        updateActivityIndicator('System Active');
+    });
+    
     return nodeEl;
 }
 
-// Fixed createEnhancedConnections function with proper alignment
-function createEnhancedConnections(topology) {
-    // Agent node dimensions
-    const nodeWidth = 100;
-    const nodeHeight = 100;
-    const nodeRadius = nodeWidth / 2;
-    
-    // Agent positions (from the original agents array)
-    const agentPositions = {
-        'diagnostic': { x: 80, y: 80 },
-        'planning': { x: 320, y: 80 },
-        'execution': { x: 560, y: 80 },
-        'validation': { x: 320, y: 280 }
-    };
-    
-    // Calculate center points for each agent
-    const centers = {};
-    Object.keys(agentPositions).forEach(agentId => {
-        centers[agentId] = {
-            x: agentPositions[agentId].x + nodeRadius,
-            y: agentPositions[agentId].y + nodeRadius
-        };
-    });
-    
-    // Define connections using proper center coordinates
+// Helper functions for enhanced visualization
+function getAgentStatusColor(status) {
+    switch (status) {
+        case 'active': return '#10b981';
+        case 'processing': return '#f59e0b';
+        case 'error': return '#ef4444';
+        case 'idle': return '#6b7280';
+        default: return '#6b7280';
+    }
+}
+
+function getAgentStatusIcon(status) {
+    switch (status) {
+        case 'active': return '●';
+        case 'processing': return '◐';
+        case 'error': return '✕';
+        case 'idle': return '○';
+        default: return '○';
+    }
+}
+
+function getMCPBackendDisplayName(backend) {
+    switch (backend) {
+        case 'local': return 'Local';
+        case 'anthropic': return 'Claude';
+        case 'openai': return 'GPT';
+        case 'huggingface': return 'HF';
+        default: return backend;
+    }
+}
+
+// Create protocol connections (ACP and MCP)
+function createProtocolConnections(svg, agents) {
+    // Define connection paths for workflow
     const connections = [
-        {
-            from: centers.diagnostic,
-            to: centers.planning,
-            id: 'diagnostic-planning'
-        },
-        {
-            from: centers.planning,
-            to: centers.execution,
-            id: 'planning-execution'
-        },
-        {
-            from: centers.execution,
-            to: centers.validation,
-            id: 'execution-validation'
-        },
-        {
-            from: centers.validation,
-            to: centers.diagnostic,
-            id: 'validation-diagnostic'
-        }
+        { from: 'diagnostic', to: 'planning', protocol: 'acp', type: 'workflow' },
+        { from: 'planning', to: 'execution', protocol: 'acp', type: 'workflow' },
+        { from: 'execution', to: 'validation', protocol: 'acp', type: 'workflow' },
+        { from: 'validation', to: 'diagnostic', protocol: 'acp', type: 'feedback' }
     ];
     
+    // MCP connections (all agents to central MCP backend)
+    const mcpCenter = { x: 300, y: 240 }; // Center of the topology
+    
     connections.forEach(conn => {
-        const connEl = createEnhancedConnection(conn);
-        topology.appendChild(connEl);
+        const fromAgent = agents.find(a => a.id === conn.from);
+        const toAgent = agents.find(a => a.id === conn.to);
+        
+        if (fromAgent && toAgent) {
+            createConnectionLine(svg, fromAgent, toAgent, conn.protocol, conn.type);
+        }
+    });
+    
+    // Add MCP backend visualization
+    createMCPBackendNode(svg, mcpCenter);
+    
+    // Connect all agents to MCP backend
+    agents.forEach(agent => {
+        createMCPConnection(svg, agent, mcpCenter);
     });
 }
 
-// Enhanced connection creation with better positioning
-function createEnhancedConnection(conn) {
-    const length = Math.sqrt(Math.pow(conn.to.x - conn.from.x, 2) + Math.pow(conn.to.y - conn.from.y, 2));
-    const angle = Math.atan2(conn.to.y - conn.from.y, conn.to.x - conn.from.x) * 180 / Math.PI;
+function createConnectionLine(svg, fromAgent, toAgent, protocol, type) {
+    const fromCenter = {
+        x: fromAgent.x + 55, // Half of node width
+        y: fromAgent.y + 55  // Half of node height
+    };
+    const toCenter = {
+        x: toAgent.x + 55,
+        y: toAgent.y + 55
+    };
     
-    const connEl = document.createElement('div');
-    connEl.className = 'agent-connection enhanced';
-    connEl.id = `connection-${conn.id}`;
-    connEl.style.left = conn.from.x + 'px';
-    connEl.style.top = conn.from.y + 'px';
-    connEl.style.width = length + 'px';
-    connEl.style.height = '3px';
-    connEl.style.background = 'linear-gradient(90deg, rgba(59, 130, 246, 0.8), rgba(16, 185, 129, 0.8))';
-    connEl.style.transform = `rotate(${angle}deg)`;
-    connEl.style.transformOrigin = '0 50%';
-    connEl.style.position = 'absolute';
-    connEl.style.borderRadius = '2px';
-    connEl.style.opacity = '0.7';
-    connEl.style.boxShadow = '0 0 8px rgba(59, 130, 246, 0.3)';
-    connEl.style.zIndex = '1';
+    // Create path element
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const pathData = `M ${fromCenter.x},${fromCenter.y} Q ${(fromCenter.x + toCenter.x) / 2},${(fromCenter.y + toCenter.y) / 2 - 30} ${toCenter.x},${toCenter.y}`;
     
-    return connEl;
+    path.setAttribute('d', pathData);
+    path.setAttribute('class', `protocol-connection ${protocol}-connection`);
+    path.setAttribute('id', `conn-${fromAgent.id}-${toAgent.id}`);
+    
+    // Add arrow marker
+    if (type === 'workflow') {
+        path.setAttribute('marker-end', `url(#arrow-${protocol})`);
+    }
+    
+    svg.appendChild(path);
+    
+    // Create arrow markers if they don't exist
+    createArrowMarkers(svg);
+}
+
+function createMCPConnection(svg, agent, mcpCenter) {
+    const agentCenter = {
+        x: agent.x + 55,
+        y: agent.y + 55
+    };
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', agentCenter.x);
+    line.setAttribute('y1', agentCenter.y);
+    line.setAttribute('x2', mcpCenter.x);
+    line.setAttribute('y2', mcpCenter.y);
+    line.setAttribute('class', 'protocol-connection mcp-connection');
+    line.setAttribute('id', `mcp-conn-${agent.id}`);
+    line.style.strokeDasharray = '3,3';
+    line.style.opacity = '0.4';
+    
+    svg.appendChild(line);
+}
+
+function createMCPBackendNode(svg, center) {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('id', 'mcp-backend-node');
+    
+    // Background circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', center.x);
+    circle.setAttribute('cy', center.y);
+    circle.setAttribute('r', 25);
+    circle.setAttribute('fill', 'rgba(16, 185, 129, 0.2)');
+    circle.setAttribute('stroke', '#10b981');
+    circle.setAttribute('stroke-width', '2');
+    circle.setAttribute('stroke-dasharray', '5,5');
+    
+    // Icon
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', center.x);
+    text.setAttribute('y', center.y + 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#10b981');
+    text.setAttribute('font-size', '20');
+    text.textContent = '💾';
+    
+    // Label
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', center.x);
+    label.setAttribute('y', center.y + 40);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('fill', '#d1d5db');
+    label.setAttribute('font-size', '10');
+    label.textContent = 'MCP Backend';
+    
+    group.appendChild(circle);
+    group.appendChild(text);
+    group.appendChild(label);
+    svg.appendChild(group);
+}
+
+function createArrowMarkers(svg) {
+    let defs = svg.querySelector('defs');
+    if (!defs) {
+        defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        svg.appendChild(defs);
+    }
+    
+    // ACP arrow marker
+    if (!svg.querySelector('#arrow-acp')) {
+        const acpMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        acpMarker.setAttribute('id', 'arrow-acp');
+        acpMarker.setAttribute('markerWidth', '10');
+        acpMarker.setAttribute('markerHeight', '10');
+        acpMarker.setAttribute('refX', '8');
+        acpMarker.setAttribute('refY', '3');
+        acpMarker.setAttribute('orient', 'auto');
+        acpMarker.innerHTML = '<polygon points="0,0 0,6 9,3" fill="#3b82f6"/>';
+        defs.appendChild(acpMarker);
+    }
+    
+    // MCP arrow marker
+    if (!svg.querySelector('#arrow-mcp')) {
+        const mcpMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        mcpMarker.setAttribute('id', 'arrow-mcp');
+        mcpMarker.setAttribute('markerWidth', '10');
+        mcpMarker.setAttribute('markerHeight', '10');
+        mcpMarker.setAttribute('refX', '8');
+        mcpMarker.setAttribute('refY', '3');
+        mcpMarker.setAttribute('orient', 'auto');
+        mcpMarker.innerHTML = '<polygon points="0,0 0,6 9,3" fill="#10b981"/>';
+        defs.appendChild(mcpMarker);
+    }
+}
+
+// Start particle flow animations
+function startParticleFlows(svg, agents) {
+    setInterval(() => {
+        createFlowParticle(svg, 'diagnostic', 'planning', 'acp');
+    }, 2000);
+    
+    setInterval(() => {
+        createFlowParticle(svg, 'planning', 'execution', 'acp');
+    }, 2500);
+    
+    setInterval(() => {
+        createFlowParticle(svg, 'execution', 'validation', 'acp');
+    }, 3000);
+    
+    // MCP particles
+    setInterval(() => {
+        agents.forEach(agent => {
+            createMCPParticle(svg, agent);
+        });
+    }, 4000);
+}
+
+function createFlowParticle(svg, fromId, toId, protocol) {
+    const fromAgent = window.topologyAgents?.find(a => a.id === fromId);
+    const toAgent = window.topologyAgents?.find(a => a.id === toId);
+    
+    if (!fromAgent || !toAgent) return;
+    
+    const particle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    particle.setAttribute('r', '3');
+    particle.setAttribute('fill', protocol === 'acp' ? '#3b82f6' : '#10b981');
+    particle.setAttribute('class', `data-flow-particle ${protocol}-particle`);
+    particle.style.filter = `drop-shadow(0 0 4px ${protocol === 'acp' ? '#3b82f6' : '#10b981'})`;
+    
+    const startX = fromAgent.x + 55;
+    const startY = fromAgent.y + 55;
+    const endX = toAgent.x + 55;
+    const endY = toAgent.y + 55;
+    
+    particle.setAttribute('cx', startX);
+    particle.setAttribute('cy', startY);
+    
+    svg.appendChild(particle);
+    
+    // Animate particle
+    const animation = particle.animate([
+        { transform: `translate(0, 0)` },
+        { transform: `translate(${endX - startX}px, ${endY - startY}px)` }
+    ], {
+        duration: 2000,
+        easing: 'ease-in-out'
+    });
+    
+    animation.onfinish = () => {
+        particle.remove();
+    };
+}
+
+function createMCPParticle(svg, agent) {
+    const particle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    particle.setAttribute('r', '2');
+    particle.setAttribute('fill', '#10b981');
+    particle.setAttribute('class', 'data-flow-particle mcp-particle');
+    particle.style.filter = 'drop-shadow(0 0 3px #10b981)';
+    
+    const startX = agent.x + 55;
+    const startY = agent.y + 55;
+    const endX = 300;
+    const endY = 240;
+    
+    particle.setAttribute('cx', startX);
+    particle.setAttribute('cy', startY);
+    
+    svg.appendChild(particle);
+    
+    // Animate to MCP backend and back
+    const animation = particle.animate([
+        { transform: `translate(0, 0)`, opacity: 1 },
+        { transform: `translate(${endX - startX}px, ${endY - startY}px)`, opacity: 0.5 },
+        { transform: `translate(0, 0)`, opacity: 0 }
+    ], {
+        duration: 3000,
+        easing: 'ease-in-out'
+    });
+    
+    animation.onfinish = () => {
+        particle.remove();
+    };
+}
+
+function highlightAgentConnections(agentId, highlight) {
+    const connections = document.querySelectorAll(`[id*="${agentId}"]`);
+    connections.forEach(conn => {
+        if (highlight) {
+            conn.style.opacity = '1';
+            conn.style.strokeWidth = '3';
+        } else {
+            conn.style.opacity = '0.7';
+            conn.style.strokeWidth = '2';
+        }
+    });
+}
+
+function updateActivityIndicator(text) {
+    const indicator = document.getElementById('activity-text');
+    if (indicator) {
+        indicator.textContent = text;
+    }
+}
+
+function updateMCPProtocolLabel() {
+    const label = document.getElementById('mcp-protocol-label');
+    if (label && mcpBackendData.activeBackend) {
+        const backendName = mcpBackendData.activeBackend.name || 'Local';
+        label.textContent = `MCP ${backendName}`;
+    }
 }
 
 function showAgentDetails(agentId) {
@@ -1146,6 +1445,277 @@ async function triggerEvent(component, severity) {
     }
 }
 
+// MCP Backend Management
+let mcpBackendData = {
+    activeBackend: null,
+    availableBackends: [],
+    backendStats: {},
+    lastUpdated: null
+};
+
+// Fetch MCP backend information
+async function fetchMCPBackendInfo() {
+    try {
+        const response = await fetch('/api/mcp/status');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        mcpBackendData = {
+            ...mcpBackendData,
+            activeBackend: data.activeBackend,
+            availableBackends: data.availableBackends || [],
+            backendStats: data.backendStats || {},
+            lastUpdated: new Date()
+        };
+        
+        updateMCPBackendDisplay();
+        
+    } catch (error) {
+        console.error('Error fetching MCP backend info:', error);
+        // Use fallback data
+        mcpBackendData = {
+            activeBackend: {
+                name: 'Local Storage',
+                type: 'local',
+                status: 'healthy',
+                health: { status: 'healthy', latency: 0 }
+            },
+            availableBackends: [
+                { type: 'local', name: 'Local Storage', status: 'healthy', configured: true },
+                { type: 'anthropic', name: 'Anthropic Claude', status: 'unconfigured', configured: false },
+                { type: 'openai', name: 'OpenAI GPT', status: 'unconfigured', configured: false },
+                { type: 'huggingface', name: 'HuggingFace', status: 'unconfigured', configured: false }
+            ],
+            backendStats: {
+                contextsCount: 0,
+                operationsPerMinute: 0,
+                uptime: 0
+            },
+            lastUpdated: new Date()
+        };
+        updateMCPBackendDisplay();
+    }
+}
+
+// Update MCP backend display
+function updateMCPBackendDisplay() {
+    const { activeBackend, availableBackends, backendStats } = mcpBackendData;
+    
+    // Update active backend info
+    const activeBackendName = document.getElementById('active-backend-name');
+    const activeBackendType = document.getElementById('active-backend-type');
+    const activeBackendHealth = document.getElementById('active-backend-health');
+    
+    if (activeBackend && activeBackendName) {
+        activeBackendName.textContent = activeBackend.name || 'Local Storage';
+        activeBackendType.textContent = `Type: ${activeBackend.type || 'local'}`;
+        
+        const health = activeBackend.health || { status: 'healthy', latency: 0 };
+        const statusIcon = health.status === 'healthy' ? '✅' : '❌';
+        const latency = health.latency || 0;
+        activeBackendHealth.textContent = `${statusIcon} ${health.status} • ${latency}ms latency`;
+    }
+    
+    // Update backend statistics
+    const contextsCount = document.getElementById('contexts-count');
+    const operationsPerMin = document.getElementById('operations-per-min');
+    const backendUptime = document.getElementById('backend-uptime');
+    
+    if (contextsCount) contextsCount.textContent = backendStats.contextsCount || 0;
+    if (operationsPerMin) operationsPerMin.textContent = backendStats.operationsPerMinute || 0;
+    if (backendUptime) {
+        const uptimeMinutes = Math.floor((backendStats.uptime || 0) / 60);
+        backendUptime.textContent = `${uptimeMinutes}m`;
+    }
+    
+    // Update available backends grid
+    updateBackendsGrid();
+    
+    // Update capabilities
+    updateBackendCapabilities();
+    
+    // Update backend selector
+    updateBackendSelector();
+    
+    // Update MCP protocol label in topology
+    updateMCPProtocolLabel();
+}
+
+// Update backends grid
+function updateBackendsGrid() {
+    const backendsGrid = document.getElementById('backends-grid');
+    if (!backendsGrid) return;
+    
+    const { availableBackends } = mcpBackendData;
+    
+    backendsGrid.innerHTML = '';
+    
+    availableBackends.forEach(backend => {
+        const backendCard = document.createElement('div');
+        backendCard.className = 'backend-card';
+        
+        const statusColor = getBackendStatusColor(backend.status);
+        const isActive = mcpBackendData.activeBackend?.type === backend.type;
+        
+        backendCard.innerHTML = `
+            <div style="
+                background: ${isActive ? '#065f46' : '#374151'}; 
+                border: 1px solid ${isActive ? '#10b981' : '#6b7280'}; 
+                border-radius: 8px; 
+                padding: 12px; 
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s;
+            " onclick="selectBackend('${backend.type}')">
+                <div style="font-size: 1.2em; margin-bottom: 5px;">
+                    ${getBackendIcon(backend.type)}
+                </div>
+                <div style="font-weight: bold; font-size: 0.85em; color: #ffffff; margin-bottom: 3px;">
+                    ${backend.name}
+                </div>
+                <div style="font-size: 0.75em; color: ${statusColor};">
+                    ${backend.status} ${isActive ? '(Active)' : ''}
+                </div>
+            </div>
+        `;
+        
+        backendsGrid.appendChild(backendCard);
+    });
+}
+
+// Update backend capabilities
+function updateBackendCapabilities() {
+    const capabilitiesList = document.getElementById('capabilities-list');
+    if (!capabilitiesList) return;
+    
+    const { activeBackend } = mcpBackendData;
+    if (!activeBackend) return;
+    
+    const capabilities = getBackendCapabilities(activeBackend.type);
+    
+    capabilitiesList.innerHTML = '';
+    
+    capabilities.forEach(capability => {
+        const badge = document.createElement('span');
+        badge.style.cssText = `
+            background: #1d4ed8; 
+            color: white; 
+            padding: 4px 8px; 
+            border-radius: 12px; 
+            font-size: 0.75em; 
+            font-weight: 500;
+        `;
+        badge.textContent = capability;
+        capabilitiesList.appendChild(badge);
+    });
+}
+
+// Update backend selector
+function updateBackendSelector() {
+    const backendSelector = document.getElementById('backend-selector');
+    if (!backendSelector) return;
+    
+    const { availableBackends, activeBackend } = mcpBackendData;
+    
+    backendSelector.innerHTML = '';
+    
+    availableBackends.forEach(backend => {
+        if (backend.configured) {
+            const option = document.createElement('option');
+            option.value = backend.type;
+            option.textContent = backend.name;
+            option.selected = activeBackend?.type === backend.type;
+            backendSelector.appendChild(option);
+        }
+    });
+}
+
+// Helper functions
+function getBackendStatusColor(status) {
+    switch (status) {
+        case 'healthy': return '#10b981';
+        case 'warning': return '#f59e0b';
+        case 'error': return '#ef4444';
+        case 'unconfigured': return '#6b7280';
+        default: return '#6b7280';
+    }
+}
+
+function getBackendIcon(type) {
+    switch (type) {
+        case 'local': return '💾';
+        case 'anthropic': return '🧠';
+        case 'openai': return '🤖';
+        case 'huggingface': return '🤗';
+        default: return '🔧';
+    }
+}
+
+function getBackendCapabilities(type) {
+    switch (type) {
+        case 'local':
+            return ['CRUD Operations', 'High Performance', 'File Storage', 'No API Limits'];
+        case 'anthropic':
+            return ['AI Analysis', 'Natural Language', 'Context Processing', 'Claude Models'];
+        case 'openai':
+            return ['Semantic Search', 'Embeddings', 'GPT Models', 'Query Intelligence'];
+        case 'huggingface':
+            return ['Open Source', 'Transformers', 'Similarity Search', 'Cost Effective'];
+        default:
+            return ['Basic Operations'];
+    }
+}
+
+// Backend control functions
+async function refreshBackendStatus() {
+    await fetchMCPBackendInfo();
+    showMessage('Backend status refreshed', 'success');
+}
+
+async function selectBackend(backendType) {
+    try {
+        const response = await fetch('/api/mcp/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: backendType })
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        // Refresh backend info after switch
+        setTimeout(() => fetchMCPBackendInfo(), 1000);
+        showMessage(`Switching to ${backendType} backend...`, 'info');
+        
+    } catch (error) {
+        console.error('Error switching backend:', error);
+        showMessage('Backend switch failed. Check configuration.', 'error');
+    }
+}
+
+function showBackendDetails() {
+    const details = {
+        active: mcpBackendData.activeBackend,
+        available: mcpBackendData.availableBackends,
+        stats: mcpBackendData.backendStats,
+        lastUpdated: mcpBackendData.lastUpdated
+    };
+    
+    console.log('MCP Backend Details:', details);
+    alert(`MCP Backend Details:\n\nActive: ${details.active?.name}\nType: ${details.active?.type}\nStatus: ${details.active?.health?.status}\n\nTotal Backends: ${details.available.length}\nContexts Stored: ${details.stats.contextsCount}\nOperations/min: ${details.stats.operationsPerMinute}`);
+}
+
+function showMessage(message, type = 'info') {
+    // Simple message display - could be enhanced with toast notifications
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        info: '#3b82f6',
+        warning: '#f59e0b'
+    };
+    
+    console.log(`%c${message}`, `color: ${colors[type]}; font-weight: bold;`);
+}
+
 // Initialize dashboard
 function initDashboard() {
     initEnhancedAgentTopology();
@@ -1155,12 +1725,14 @@ function initDashboard() {
     fetchWorkflows(1);
     fetchEnhancedAgentTopology();
     fetchMetrics(); // Initial metrics fetch
+    fetchMCPBackendInfo(); // Initialize MCP backend info
     
     // Auto-refresh data
     setInterval(() => {
         fetchStats();
         fetchProgress();
         fetchEnhancedAgentTopology();
+        fetchMCPBackendInfo(); // Refresh MCP backend info
         
         // Refresh workflows if tab is active
         if (document.getElementById('workflows-tab').classList.contains('active')) {

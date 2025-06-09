@@ -108,7 +108,8 @@ class NetworkDiagnosticAgent(DiagnosticAgent):
                  acp_broker_url: str = "http://localhost:8002",
                  metrics_config: Optional[Dict[str, Dict[str, Any]]] = None,
                  poll_interval: float = 60.0,
-                 config: Dict[str, Any] = None):
+                 config: Dict[str, Any] = None,
+                 mcp_config_path: Optional[str] = None):
         """Initialize a new network diagnostic agent.
         
         Args:
@@ -132,6 +133,7 @@ class NetworkDiagnosticAgent(DiagnosticAgent):
         self.mcp_url = mcp_url
         self.acp_broker_url = acp_broker_url
         self.poll_interval = poll_interval
+        self.mcp_config_path = mcp_config_path
         
         # Set up metrics to monitor
         self.metrics: Dict[str, NetworkMetric] = {}
@@ -159,10 +161,12 @@ class NetworkDiagnosticAgent(DiagnosticAgent):
         
     async def _initialize(self) -> None:
         """Initialize the agent."""
-        # Initialize MCP client
-        self.mcp_client = MCPClient(
+        # Initialize MCP client with configurable backends
+        from protocols.mcp.migration_helper import create_mcp_client
+        self.mcp_client = create_mcp_client(
             client_id=self.agent_id,
-            base_url=self.mcp_url
+            base_url=self.mcp_url,  # Legacy parameter for compatibility
+            config_path=self.mcp_config_path
         )
         await self.mcp_client.initialize()
         

@@ -20,7 +20,8 @@ class NetworkValidationAgent(ValidationAgent):
                  mcp_url: str = "http://localhost:8000",
                  acp_broker_url: str = "http://localhost:8002",
                  telemetry_url: str = "http://localhost:8001/telemetry",
-                 config: Dict[str, Any] = None):
+                 config: Dict[str, Any] = None,
+                 mcp_config_path: Optional[str] = None):
         """Initialize a new network validation agent.
         
         Args:
@@ -30,6 +31,7 @@ class NetworkValidationAgent(ValidationAgent):
             acp_broker_url: URL for the ACP message broker
             telemetry_url: URL for the telemetry API
             config: Additional configuration
+            mcp_config_path: Path to MCP configuration file
         """
         super().__init__(
             agent_id=agent_id,
@@ -41,6 +43,7 @@ class NetworkValidationAgent(ValidationAgent):
         self.mcp_url = mcp_url
         self.acp_broker_url = acp_broker_url
         self.telemetry_url = telemetry_url
+        self.mcp_config_path = mcp_config_path
         
         # Clients for communication
         self.mcp_client = None
@@ -48,10 +51,12 @@ class NetworkValidationAgent(ValidationAgent):
         
     async def _initialize(self) -> None:
         """Initialize the agent."""
-        # Initialize MCP client
-        self.mcp_client = MCPClient(
+        # Initialize MCP client with configurable backends
+        from protocols.mcp.migration_helper import create_mcp_client
+        self.mcp_client = create_mcp_client(
             client_id=self.agent_id,
-            base_url=self.mcp_url
+            base_url=self.mcp_url,  # Legacy parameter for compatibility
+            config_path=self.mcp_config_path
         )
         await self.mcp_client.initialize()
         

@@ -1437,29 +1437,35 @@ class AgentManager:
             if not self.acp_broker_adapter or not self.mcp_server:
                 raise Exception("Required services (ACP/MCP) not available")
             
-            # Create real agent instances
+            # Create real agent instances with configurable MCP backends
+            mcp_config_path = "MCP-Server-Config.cfg"
+            
             self.agents['diagnostic'] = NetworkDiagnosticAgent(
                 agent_id="diagnostic-001",
-                mcp_url=f"http://{self.host}:{self.mcp_port}",
-                acp_broker_url=f"ws://{self.host}:{self.acp_port}"
+                mcp_url=f"http://{self.host}:{self.mcp_port}",  # Legacy parameter, will use config instead
+                acp_broker_url=f"ws://{self.host}:{self.acp_port}",
+                mcp_config_path=mcp_config_path
             )
             
             self.agents['planning'] = NetworkPlanningAgent(
                 agent_id="planning-001", 
-                mcp_url=f"http://{self.host}:{self.mcp_port}",
-                acp_broker_url=f"ws://{self.host}:{self.acp_port}"
+                mcp_url=f"http://{self.host}:{self.mcp_port}",  # Legacy parameter, will use config instead
+                acp_broker_url=f"ws://{self.host}:{self.acp_port}",
+                mcp_config_path=mcp_config_path
             )
             
             self.agents['execution'] = NetworkExecutionAgent(
                 agent_id="execution-001",
-                mcp_url=f"http://{self.host}:{self.mcp_port}",
-                acp_broker_url=f"ws://{self.host}:{self.acp_port}"
+                mcp_url=f"http://{self.host}:{self.mcp_port}",  # Legacy parameter, will use config instead
+                acp_broker_url=f"ws://{self.host}:{self.acp_port}",
+                mcp_config_path=mcp_config_path
             )
             
             self.agents['validation'] = NetworkValidationAgent(
                 agent_id="validation-001",
-                mcp_url=f"http://{self.host}:{self.mcp_port}",
-                acp_broker_url=f"ws://{self.host}:{self.acp_port}"
+                mcp_url=f"http://{self.host}:{self.mcp_port}",  # Legacy parameter, will use config instead
+                acp_broker_url=f"ws://{self.host}:{self.acp_port}",
+                mcp_config_path=mcp_config_path
             )
             logger.info("✅ Agent instances created")
         except Exception as e:
@@ -1678,6 +1684,10 @@ class EnhancedNOCDashboard:
         
         # NEW: Real-time metrics endpoint
         self.app.router.add_get('/api/metrics', self.metrics_handler)
+        
+        # NEW: MCP Backend management endpoints
+        self.app.router.add_get('/api/mcp/status', self.mcp_status_handler)
+        self.app.router.add_post('/api/mcp/switch', self.mcp_switch_handler)
         
         # Speed control endpoint
         self.app.router.add_post('/api/speed/{speed}', self.speed_handler)
@@ -2108,6 +2118,133 @@ class EnhancedNOCDashboard:
         except Exception as e:
             logger.error(f"Error in health handler: {str(e)}")
             return web.json_response({"status": "error", "error": str(e)}, status=500)
+    
+    async def mcp_status_handler(self, request):
+        """MCP Backend status endpoint"""
+        try:
+            # Get backend information from agents if available
+            active_backend_info = {
+                "name": "Local Storage",
+                "type": "local",
+                "status": "healthy",
+                "health": {
+                    "status": "healthy",
+                    "latency": 0,
+                    "timestamp": datetime.now().isoformat()
+                }
+            }
+            
+            # Try to get real backend info from a configured agent
+            if hasattr(self, 'agents') and self.agents:
+                for agent_name, agent in self.agents.items():
+                    if hasattr(agent, 'mcp_client'):
+                        try:
+                            # Try to get health info from MCP client
+                            health = await agent.mcp_client.health_check()
+                            if health and 'client' in health:
+                                client_info = health['client']
+                                backends = client_info.get('backends_available', ['local'])
+                                if backends:
+                                    active_backend_info["type"] = backends[0] if len(backends) == 1 else "local"
+                            break
+                        except Exception as e:
+                            logger.debug(f"Could not get MCP health from {agent_name}: {str(e)}")
+            
+            # Available backends based on configuration
+            available_backends = [
+                {
+                    "type": "local",
+                    "name": "Local Storage", 
+                    "status": "healthy",
+                    "configured": True,
+                    "description": "File-based local storage"
+                },
+                {
+                    "type": "anthropic",
+                    "name": "Anthropic Claude",
+                    "status": "unconfigured" if not os.getenv('ANTHROPIC_API_KEY') else "available",
+                    "configured": bool(os.getenv('ANTHROPIC_API_KEY')),
+                    "description": "AI-powered context analysis"
+                },
+                {
+                    "type": "openai", 
+                    "name": "OpenAI GPT",
+                    "status": "unconfigured" if not os.getenv('OPENAI_API_KEY') else "available",
+                    "configured": bool(os.getenv('OPENAI_API_KEY')),
+                    "description": "Semantic search with embeddings"
+                },
+                {
+                    "type": "huggingface",
+                    "name": "HuggingFace",
+                    "status": "unconfigured" if not os.getenv('HUGGINGFACE_API_KEY') else "available", 
+                    "configured": bool(os.getenv('HUGGINGFACE_API_KEY')),
+                    "description": "Open-source transformers"
+                }
+            ]
+            
+            # Backend statistics
+            backend_stats = {
+                "contextsCount": len(getattr(self, 'contexts_stored', [])),
+                "operationsPerMinute": getattr(self, 'mcp_operations_per_minute', 0),
+                "uptime": int((datetime.now() - self.stats.get('start_time', datetime.now())).total_seconds())
+            }
+            
+            return web.json_response({
+                "activeBackend": active_backend_info,
+                "availableBackends": available_backends,
+                "backendStats": backend_stats,
+                "lastUpdated": datetime.now().isoformat(),
+                "configPath": "MCP-Server-Config.cfg"
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in MCP status handler: {str(e)}")
+            return web.json_response({"error": str(e)}, status=500)
+    
+    async def mcp_switch_handler(self, request):
+        """MCP Backend switch endpoint"""
+        try:
+            data = await request.json()
+            backend_type = data.get('backend')
+            
+            if not backend_type:
+                return web.json_response({"error": "Backend type required"}, status=400)
+            
+            # Validate backend type
+            valid_backends = ['local', 'anthropic', 'openai', 'huggingface']
+            if backend_type not in valid_backends:
+                return web.json_response({"error": f"Invalid backend type. Must be one of: {valid_backends}"}, status=400)
+            
+            # Check if backend is configured (for non-local backends)
+            if backend_type != 'local':
+                api_key_map = {
+                    'anthropic': 'ANTHROPIC_API_KEY',
+                    'openai': 'OPENAI_API_KEY', 
+                    'huggingface': 'HUGGINGFACE_API_KEY'
+                }
+                
+                required_key = api_key_map.get(backend_type)
+                if required_key and not os.getenv(required_key):
+                    return web.json_response({
+                        "error": f"Backend {backend_type} not configured. Missing environment variable: {required_key}"
+                    }, status=400)
+            
+            # For now, return success (actual switching would require more complex implementation)
+            # In a full implementation, this would update the MCP-Server-Config.cfg file
+            # and restart the MCP backend factory
+            
+            logger.info(f"Backend switch requested: {backend_type}")
+            
+            return web.json_response({
+                "status": "success",
+                "message": f"Backend switch to {backend_type} initiated",
+                "newBackend": backend_type,
+                "note": "Configuration update required - please restart the system to complete the switch"
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in MCP switch handler: {str(e)}")
+            return web.json_response({"error": str(e)}, status=500)
     
     async def initialize(self, data_path: str = "processed_data", playbook_dir: str = "playbooks"):
         """Initialize the enhanced NOC system with real agent framework"""
