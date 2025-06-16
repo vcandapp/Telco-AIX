@@ -57,6 +57,7 @@ A ** autonomous 5G network operations system** featuring distributed AI agents, 
 │ • Pattern       │ • Resource      │ • Automation    │ • Performance     │
 │   Recognition   │   Planning      │   Tasks         │   Validation      │
 │ • ML Models     │ • Impact        │ • Rollback      │ • Health Check    │
+│ • MCP Server    │ • MCP Server    │                 │ • MCP Server      │
 └─────────────────┴─────────────────┴─────────────────┴───────────────────┘
                   │                               │
                   ▼                               ▼
