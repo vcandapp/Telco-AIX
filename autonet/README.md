@@ -1,6 +1,4 @@
-# 🤖 Autonomous 5G Network Operations - Real Agentic Framework
-
-## 🚀 Overview
+# Autonomous 5G Network Operations - Real Agentic Framework
 
 A autonomous 5G network operations system featuring distributed AI agents, real-time anomaly detection, and autonomous remediation. The system uses genuine agent-to-agent communication protocols (ACP/MCP) with live orchestration for monitoring AMF, SMF, and UPF components.
 
