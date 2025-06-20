@@ -2,7 +2,7 @@
 
 ## 🚀 Overview
 
-A ** autonomous 5G network operations system** featuring distributed AI agents, real-time anomaly detection, and autonomous remediation. The system uses genuine agent-to-agent communication protocols (ACP/MCP) with live orchestration for monitoring AMF, SMF, and UPF components.
+A autonomous 5G network operations system featuring distributed AI agents, real-time anomaly detection, and autonomous remediation. The system uses genuine agent-to-agent communication protocols (ACP/MCP) with live orchestration for monitoring AMF, SMF, and UPF components.
 
 **🎥 Demo Video1**: [Watch on YouTube](https://www.youtube.com/watch?v=nQlEBPeQ1hk) <br>
 
