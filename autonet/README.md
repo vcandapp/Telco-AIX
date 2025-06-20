@@ -8,6 +8,8 @@ A ** autonomous 5G network operations system** featuring distributed AI agents, 
 
 **🎥 Demo Video2**: [Watch on YouTube](https://youtu.be/plUdrp0YNz8)
 
+**📋 Article**: [Episode-XXVII](https://medium.com/open-5g-hypercore/episode-xxvii-lessons-learned-from-a-telco-mcp-backend-experiments-bf14d90b1e6a)
+
 ---
 
 ## ✨ Key Features
