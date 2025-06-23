@@ -49,6 +49,7 @@ Explore our curated models and datasets:
 
 | Title | Platform | Link | Key Authors |
 |-------|----------|------|-------------|
+| Lessons Learned from a Telco MCP BackEnd Experiments | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxvii-lessons-learned-from-a-telco-mcp-backend-experiments-bf14d90b1e6a) |Ian Hood, Robert Shaw, Fatih E. Nar |
 | Satisfaction is All You Need! | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxv-satisfaction-is-all-you-need-9ff145d68385) | Fatih E. Nar, Ian Hood, Ranny Haiby et al. |
 | Artificially Intelligent Platform Interface (AI-PI) | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxiv-artificially-intelligent-platform-interface-667f44dcecf1) | Fatih E. Nar, Ian Hood, Shujaur Mufti et al. |
 | TrueAI4Telco | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxiii-trueai4telco-3e372898ce06) | Azhar Sayeed, Fatih E. NAR et al. |
