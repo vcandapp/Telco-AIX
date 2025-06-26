@@ -5,6 +5,8 @@
 
 This project aims to deliver a service assurance insights (net promoter score -NPS- for business growth predicted based on performance of the telco service metrics) model using a Transformer Neural Network. The model is trained on semi-synthetic (encorporated real FCC Open Data and correlated with real weather open data sources) telecom  network stack data to predict network performance metrics and predict NPS. The goal is to provide business vs network performance correlation for planned growth.
 
+**🎥 Demo Video**: [Watch on YouTube](https://youtu.be/gFbtux0dGVA) <br>
+
 ## Data
 ![Service Assurance Data Structure](https://raw.githubusercontent.com/fenar/etc-ai-wrx/main/serviceassurance/data/svcass-datainsp.png)<br>
 
