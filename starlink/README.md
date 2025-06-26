@@ -6,6 +6,8 @@ With Starlink emerging as a robust option, providing improved coverage and conne
 
 To empower travelers with insights into Starlink's internet service quality at their destination, we have developed and trained a neural network transformer model. This model predicts QoE by analyzing key parameters, offering nomadic users a AI-Tool to anticipate and plan their connectivity needs effectively.<br>
 
+**🎥 Demo Video**: [Watch on YouTube](https://youtu.be/RLj6Ju809jk) <br>
+
 <div align="center">
     <img src="https://raw.githubusercontent.com/tme-osx/TME-AIX/refs/heads/RedHat-Special/starlink/images/starling-qoe-moods.png" width="640"/>
 </div>
