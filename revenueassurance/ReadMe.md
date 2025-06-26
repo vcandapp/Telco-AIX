@@ -9,6 +9,8 @@
   - [Deploying as k8s pod](#Deploying-as-k8s-pod)
   - [Steps for end to end MLOps setup](mlops.md)
 
+**🎥 Demo Video**: [Watch on YouTube](https://youtu.be/E-QBYvhUWbE) <br>
+
 # Revenue Assurance and Fraud Management (RAFM) with AI Assistance
 
 ## Project Overview
