@@ -5,6 +5,8 @@ In order to utilize this app please get your access api key from https://maas.ap
 
 **⚠️Recipe for Model As a Service with RHOAI, 3Scale and SSO implementation: [Link](https://github.com/rh-aiservices-bu/models-aas)** <br>
 
+**🎥 Demo Video**: [Watch on YouTube](https://youtube.com/shorts/7MIcWS6HXhM) <br>
+
 ## Prerequisites
 - An API key for the Desired Hosted GenAI Model from Model as a Server Backend -> customer-voicebot.py usage
 - Access Model Running on RHOAI Inference Server -> customer-voicebot2.py usage
