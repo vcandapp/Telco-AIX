@@ -131,7 +131,7 @@ A autonomous 5G network operations system featuring distributed AI agents, real-
 ### **1. Clone Repository**
 ```bash
 git clone https://github.com/yourusername/Telco-AIX.git
-cd Telco-AIX/autonetv2
+cd Telco-AIX/autonet
 ```
 
 ### **2. Install Dependencies**
