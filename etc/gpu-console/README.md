@@ -1,5 +1,5 @@
 # 🖥️ GPU Console - Multi-Cluster GPU Monitoring Dashboard
-![GPU Console Dashboard Single Cluster View](images/dash3.png)
+![GPU Console Dashboard Single Cluster View](images/dash4.png)
 A comprehensive real-time GPU monitoring dashboard for Kubernetes clusters with NVIDIA GPU Operator support. Monitor GPUs across multiple clusters with interactive visualizations, persistent metrics, and executive summary views.
 
 ![GPU Console Dashboard Single Cluster View](images/dash2.png)
