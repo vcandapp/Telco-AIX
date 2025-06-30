@@ -416,35 +416,6 @@ localStorage.setItem('debug', 'gpu-console:*')
 3. **Multi-Metric Charts**: Time series with 4 metrics combined
 4. **Process Monitoring**: Real-time process lists
 
-## 🤝 Contributing
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Install dependencies: `npm run install:all`
-4. Make your changes
-5. Test thoroughly: `npm run type-check && npm run build`
-6. Commit with conventional commits: `git commit -m "feat: add amazing feature"`
-7. Push and create a Pull Request
-
-### Code Standards
-- **TypeScript**: Strict mode enabled
-- **ESLint**: Airbnb configuration
-- **Prettier**: Code formatting
-- **Conventional Commits**: Commit message format
-- **Component Structure**: Functional components with hooks
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **NVIDIA GPU Operator** team for the excellent Kubernetes integration
-- **Chart.js** community for the powerful charting library
-- **Kubernetes** community for the robust container orchestration
-- **React** and **Node.js** ecosystems for the development foundation
-
 ---
 
 ## 🚀 Quick Commands
