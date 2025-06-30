@@ -2,7 +2,7 @@
 
 A comprehensive real-time GPU monitoring dashboard for Kubernetes clusters with NVIDIA GPU Operator support. Monitor GPUs across multiple clusters with interactive visualizations, persistent metrics, and executive summary views.
 
-![GPU Console Dashboard](images/dash.png)
+![GPU Console Dashboard Single Cluster View](images/dash1.png)
 
 ## ✨ Features
 
