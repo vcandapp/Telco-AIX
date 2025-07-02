@@ -6,7 +6,7 @@
 
 Welcome to the **Telco-AIX** collaborative experimental workspace –> where we explore data-driven decision-making through open-source AI capabilities and open datasets.
 
-## Projects 
+## Experiments 
 
 | Domain | Project | Focus Area |
 |--------|---------|------------|
