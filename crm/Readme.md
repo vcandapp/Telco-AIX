@@ -3,6 +3,10 @@
 The app interacts with a specified API endpoint to process user inputs and display responses in a chat-like interface. <br>
 In order to utilize this app please get your access api key from https://maas.apps.prod.rhoai.rh-aiservices-bu.com/ <br> <br>
 
+<div align="center">
+    <img src="https://github.com/tme-osx/TME-AIX/blob/main/crm/maas-crm2.png"/>
+</div>
+
 **⚠️Recipe for Model As a Service with RHOAI, 3Scale and SSO implementation: [Link](https://github.com/rh-aiservices-bu/models-aas)** <br>
 
 **🎥 Demo Video**: [Watch on YouTube](https://youtube.com/shorts/7MIcWS6HXhM) <br>
