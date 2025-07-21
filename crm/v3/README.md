@@ -130,6 +130,8 @@ System prompts are loaded from `system_prompts.json`, making it easy to customiz
 ## Configuration
 
 ### Environment Variables
+Serving Selected Model Qwen3-32B Full Model that runs on RHOAI-ModelServing with vLLM RunTime with NVIDIA Acceleration. We have tested with Single RTX 6000 Blackwell 96GB Card.
+![Model Serving](modelserving.png)
 - Default API endpoint: `https://qwen3-32b-vllm-latest-tme-aix.apps.sandbox01.narlabs.io`
 - Model: `qwen3-32b-vllm-latest`
 - Port: `30180`
