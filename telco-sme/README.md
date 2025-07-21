@@ -132,6 +132,7 @@ System prompts are loaded from `system_prompts.json`, making it easy to customiz
 ### Environment Variables
 Serving Selected Model Qwen3-32B Full Model that runs on RHOAI-ModelServing with vLLM RunTime with NVIDIA Acceleration. We have tested with Single RTX 6000 Blackwell 96GB Card.
 ![Model Serving](modelserving.png)
+- Model-Car Image URI: `oci://docker.io/efatnar/modelcar-qwen3-32b:latest`
 - Default API endpoint: `https://qwen3-32b-vllm-latest-tme-aix.apps.sandbox01.narlabs.io`
 - Model: `qwen3-32b-vllm-latest`
 - Port: `30180`
@@ -167,22 +168,5 @@ Serving Selected Model Qwen3-32B Full Model that runs on RHOAI-ModelServing with
 - `system_prompts.json`: Expert persona definitions
 - `requirements.txt`: Python package dependencies
 
-### Adding Features
-1. **New Expert Domains**: Add entries to `system_prompts.json`
-2. **UI Modifications**: Update `create_interface()` method
-3. **Session Features**: Extend `SessionManager` class
-4. **API Integration**: Modify `ChatClient` class
-
-## License and Support
-
-This is a development tool for telecommunications professionals working with AI-powered solutions. For support and feature requests, refer to the development team.
-
-## Version History
-
-- **v3.0**: Added persistent sessions, enhanced UI, system prompt management
-- **v2.0**: Streaming support, file uploads, diagnostics
-- **v1.0**: Basic chat interface with telco expertise
-
----
 
 **Note**: This interface is designed for professional telecommunications use cases and requires appropriate model access and configuration.
