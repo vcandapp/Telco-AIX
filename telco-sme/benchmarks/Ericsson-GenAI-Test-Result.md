@@ -2,8 +2,6 @@
 Connected to: Qwen3-32B Model Running on RTX A9000 Blackwell
 Temp: 0.1 | Tokens: 8100
 
-# Chat Export - 2025-07-21 17:41:16
-
 ## Message 1
 
 **User:** I need a comprehensive technical analysis of Ericsson's Cloud AI RAN architecture compared to their traditional deployment model. Please address each section sequentially:
