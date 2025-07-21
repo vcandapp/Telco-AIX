@@ -28,13 +28,11 @@ The Telco-AIX SME (Subject Matter Expert) Web Interface is a sophisticated chat 
 
 ### 🎯 **Expert Domains**
 1. **Default Assistant** - Systematic problem-solving approach
-2. **Technical Expert** - Software, cloud, and AI/ML architecture
-3. **Code Assistant** - Production-ready, maintainable code
-4. **Data Analyst** - Business insights and analytics
-5. **Creative Writer** - Strategic content creation
-6. **Network Expert** - Network architecture and SDN/NFV
-7. **Telco Expert** - 5G/6G, RAN, Core networks, standards
-8. **Custom** - R&D and Sales Engineering focus
+2. **Network Expert** - Network architecture and SDN/NFV
+3. **Telco Expert** - 5G/6G, RAN, Core networks, standards
+4. **Cloud Expert** - Cloud Tech Expert
+5. **Storage Expert** - Storage Matters
+6. **Custom** - R&D and Sales Engineering focus
 
 ## Installation
 
