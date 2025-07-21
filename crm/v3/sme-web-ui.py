@@ -558,6 +558,9 @@ class ChatInterface:
         
         print(f"\n{'='*60}")
         print(f"🚀 PROCESSING: '{message[:50]}{'...' if len(message) > 50 else ''}'")
+        print(f"🌡️ TEMPERATURE: {temperature}")
+        print(f"📏 MAX_TOKENS: {max_tokens}")
+        print(f"🎯 SYSTEM_PROMPT: {system_prompt}")
         print(f"{'='*60}")
         
         # Build system prompt
@@ -1023,7 +1026,7 @@ class ChatInterface:
                                 )
                             
                             # Context info
-                            context_info = gr.Markdown("**Context:** Ready | **Mode:** Direct", elem_id="context-info")
+                            context_info = gr.Markdown(f"**Context:** Ready | **Mode:** Direct | **Temp:** {self.config.default_temperature} | **Tokens:** {self.config.default_max_tokens}", elem_id="context-info")
                             
                             # Export output (hidden by default)
                             export_output = gr.Textbox(
@@ -1034,7 +1037,7 @@ class ChatInterface:
                         
                         # Configuration sidebar - narrower
                         with gr.Column(scale=1, elem_classes="config-panel"):
-                            gr.Markdown("### ⚙️ Quick Settings")
+                            gr.Markdown("### ⚙️ Settings")
                             
                             system_dropdown = gr.Dropdown(
                                 choices=list(self.system_prompts.keys()),
@@ -1043,31 +1046,43 @@ class ChatInterface:
                                 scale=1
                             )
                             
-                            with gr.Accordion("Advanced Settings", open=False):
-                                custom_system = gr.Textbox(
-                                    label="Custom System Prompt",
-                                    placeholder="Override template...",
-                                    lines=2,
-                                    scale=1
-                                )
-                                
-                                temperature = gr.Slider(
-                                    minimum=0.0,
-                                    maximum=1.0,
-                                    value=self.config.default_temperature,
-                                    step=0.1,
-                                    label="Temperature",
-                                    scale=1
-                                )
-                                
-                                max_tokens = gr.Slider(
-                                    minimum=100,
-                                    maximum=4096,
-                                    value=self.config.default_max_tokens,
-                                    step=100,
-                                    label="Max Tokens",
-                                    scale=1
-                                )
+                            # Model parameters - always visible
+                            temperature = gr.Slider(
+                                minimum=0.0,
+                                maximum=1.0,
+                                value=self.config.default_temperature,
+                                step=0.1,
+                                label="🌡️ Temperature",
+                                scale=1,
+                                info="Controls randomness (0=focused, 1=creative)",
+                                interactive=True
+                            )
+                            
+                            max_tokens = gr.Slider(
+                                minimum=100,
+                                maximum=4096,
+                                value=self.config.default_max_tokens,
+                                step=100,
+                                label="📏 Max Tokens",
+                                scale=1,
+                                info="Maximum response length",
+                                interactive=True
+                            )
+                            
+                            # Parameter status display
+                            param_status = gr.Markdown(
+                                f"**Current:** Temp={self.config.default_temperature} | Tokens={self.config.default_max_tokens}",
+                                elem_id="param-status"
+                            )
+                            
+                            # Custom system prompt (always accessible)
+                            custom_system = gr.Textbox(
+                                label="🎯 Custom System Prompt",
+                                placeholder="Override selected template with custom prompt...",
+                                lines=4,
+                                scale=1,
+                                info="Overrides the selected system prompt above"
+                            )
                 
                 # Additional tabs for better organization
                 with gr.TabItem("🔧 Diagnostics"):
@@ -1146,13 +1161,16 @@ class ChatInterface:
             def update_system_prompt(selection):
                 return self.system_prompts.get(selection, "")
             
-            def update_context_info(history, message):
+            def update_context_info(history, message, temp, tokens):
                 if not history:
-                    return "**Context:** Ready | **Mode:** Direct"
+                    return f"**Context:** Ready | **Mode:** Direct | **Temp:** {temp} | **Tokens:** {tokens}"
                 
                 total_chars = sum(len(h[0]) + len(h[1]) for h in history) + len(message or "")
                 mode = "🌊 Streaming" if total_chars > 4000 else "⚡ Direct"
-                return f"**Context:** {total_chars} chars | **Mode:** {mode}"
+                return f"**Context:** {total_chars} chars | **Mode:** {mode} | **Temp:** {temp} | **Tokens:** {tokens}"
+            
+            def update_param_status(temp, tokens):
+                return f"**Current:** Temp={temp} | Tokens={tokens}"
             
             # Wire up the system dropdown
             system_dropdown.change(
@@ -1164,8 +1182,21 @@ class ChatInterface:
             # Update context info on message change
             msg.change(
                 update_context_info,
-                inputs=[chatbot, msg],
+                inputs=[chatbot, msg, temperature, max_tokens],
                 outputs=[context_info]
+            )
+            
+            # Update context info and param status when sliders change
+            temperature.change(
+                lambda h, m, t, tok: [update_context_info(h, m, t, tok), update_param_status(t, tok)],
+                inputs=[chatbot, msg, temperature, max_tokens],
+                outputs=[context_info, param_status]
+            )
+            
+            max_tokens.change(
+                lambda h, m, t, tok: [update_context_info(h, m, t, tok), update_param_status(t, tok)],
+                inputs=[chatbot, msg, temperature, max_tokens],
+                outputs=[context_info, param_status]
             )
             
             # Diagnostics handlers
