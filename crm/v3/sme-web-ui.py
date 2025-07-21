@@ -17,6 +17,9 @@ import time
 import threading
 from urllib.parse import urljoin
 import os
+import uuid
+import pickle
+from pathlib import Path
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -75,6 +78,148 @@ def load_system_prompts():
 
 # Load system prompts at module level
 SYSTEM_PROMPTS = load_system_prompts()
+
+class SessionManager:
+    """Manages persistent chat sessions"""
+    
+    def __init__(self, sessions_dir: str = "sessions"):
+        self.sessions_dir = Path(sessions_dir)
+        self.sessions_dir.mkdir(exist_ok=True)
+        self.session_timeout = 24 * 60 * 60  # 24 hours in seconds
+    
+    def create_session(self) -> str:
+        """Create a new session and return session ID"""
+        session_id = str(uuid.uuid4())[:8]  # Short session ID
+        self._save_session(session_id, {
+            'history': [],
+            'created_at': time.time(),
+            'last_accessed': time.time(),
+            'settings': {
+                'system_prompt': 'Default Assistant',
+                'custom_prompt': '',
+                'temperature': 0.6,
+                'max_tokens': 2048
+            }
+        })
+        print(f"📂 Created new session: {session_id}")
+        return session_id
+    
+    def load_session(self, session_id: str) -> dict:
+        """Load session data or create new if doesn't exist"""
+        if not session_id:
+            return self._create_empty_session()
+        
+        session_file = self.sessions_dir / f"session_{session_id}.pkl"
+        
+        if not session_file.exists():
+            print(f"⚠️ Session {session_id} not found, creating new")
+            return self._create_empty_session()
+        
+        try:
+            with open(session_file, 'rb') as f:
+                session_data = pickle.load(f)
+            
+            # Check if session expired
+            if time.time() - session_data.get('last_accessed', 0) > self.session_timeout:
+                print(f"⏰ Session {session_id} expired, creating new")
+                session_file.unlink(missing_ok=True)  # Delete expired session
+                return self._create_empty_session()
+            
+            # Update last accessed time
+            session_data['last_accessed'] = time.time()
+            self._save_session(session_id, session_data)
+            
+            print(f"📂 Loaded session: {session_id} ({len(session_data['history'])} messages)")
+            return session_data
+            
+        except Exception as e:
+            print(f"❌ Error loading session {session_id}: {e}")
+            return self._create_empty_session()
+    
+    def save_session(self, session_id: str, history: list, settings: dict = None) -> None:
+        """Save session data"""
+        if not session_id:
+            return
+        
+        session_data = {
+            'history': history,
+            'last_accessed': time.time(),
+            'settings': settings or {}
+        }
+        
+        # Load existing session to preserve created_at
+        existing = self.load_session(session_id)
+        if 'created_at' in existing:
+            session_data['created_at'] = existing['created_at']
+        else:
+            session_data['created_at'] = time.time()
+        
+        self._save_session(session_id, session_data)
+    
+    def _save_session(self, session_id: str, session_data: dict) -> None:
+        """Internal method to save session data"""
+        session_file = self.sessions_dir / f"session_{session_id}.pkl"
+        try:
+            with open(session_file, 'wb') as f:
+                pickle.dump(session_data, f)
+        except Exception as e:
+            print(f"❌ Error saving session {session_id}: {e}")
+    
+    def _create_empty_session(self) -> dict:
+        """Create empty session data structure"""
+        return {
+            'history': [],
+            'created_at': time.time(),
+            'last_accessed': time.time(),
+            'settings': {
+                'system_prompt': 'Default Assistant',
+                'custom_prompt': '',
+                'temperature': 0.6,
+                'max_tokens': 2048
+            }
+        }
+    
+    def list_sessions(self) -> list:
+        """List all active sessions"""
+        sessions = []
+        for session_file in self.sessions_dir.glob("session_*.pkl"):
+            try:
+                session_id = session_file.stem.replace("session_", "")
+                with open(session_file, 'rb') as f:
+                    data = pickle.load(f)
+                
+                # Skip expired sessions
+                if time.time() - data.get('last_accessed', 0) > self.session_timeout:
+                    session_file.unlink(missing_ok=True)
+                    continue
+                
+                sessions.append({
+                    'id': session_id,
+                    'messages': len(data['history']),
+                    'created': data.get('created_at', 0),
+                    'accessed': data.get('last_accessed', 0)
+                })
+            except:
+                continue
+        
+        return sorted(sessions, key=lambda x: x['accessed'], reverse=True)
+    
+    def cleanup_expired_sessions(self) -> int:
+        """Clean up expired sessions and return count"""
+        cleaned = 0
+        for session_file in self.sessions_dir.glob("session_*.pkl"):
+            try:
+                with open(session_file, 'rb') as f:
+                    data = pickle.load(f)
+                
+                if time.time() - data.get('last_accessed', 0) > self.session_timeout:
+                    session_file.unlink(missing_ok=True)
+                    cleaned += 1
+            except:
+                session_file.unlink(missing_ok=True)
+                cleaned += 1
+        
+        return cleaned
 
 class StreamingResponse:
     """Handle streaming response accumulation"""
@@ -541,6 +686,7 @@ class ChatInterface:
         self.client = ChatClient(config)
         self.system_prompts = SYSTEM_PROMPTS.copy()  # Keep a local copy
         self._processing = False  # Flag to prevent double processing
+        self.session_manager = SessionManager()  # Add session management
     
     def process_message(
         self,
@@ -550,17 +696,22 @@ class ChatInterface:
         custom_prompt: str,
         temperature: float,
         max_tokens: int,
-        uploaded_file: Optional[Any] = None
-    ) -> Tuple[str, List[List[str]], Optional[Any]]:
+        uploaded_file: Optional[Any] = None,
+        session_id: str = None
+    ) -> Tuple[str, List[List[str]], Optional[Any], str]:
         """Enhanced message processing with UI debugging"""
         
         if not message.strip():
-            return "", history, None
+            return "", history, None, session_id or ""
+        
+        # Create or get session ID
+        if not session_id:
+            session_id = self.session_manager.create_session()
         
         # Prevent double processing
         if self._processing:
             print("⚠️ Already processing, ignoring duplicate request")
-            return "", history, None
+            return "", history, None, session_id
         
         self._processing = True
         
@@ -605,8 +756,15 @@ class ChatInterface:
                 error_response = "❌ Context too large. Please start a new conversation or upload a smaller file."
                 print(f"❌ Context too large: {context_size} chars")
                 new_history = history + [[message, error_response]]
+                # Save session with error
+                self.session_manager.save_session(session_id, new_history, {
+                    'system_prompt': system_prompt,
+                    'custom_prompt': custom_prompt,
+                    'temperature': temperature,
+                    'max_tokens': max_tokens
+                })
                 print(f"🔄 UI DEBUG: Returning history with {len(new_history)} items")
-                return "", new_history, None
+                return "", new_history, None, session_id
             
             # Process with smart completion
             print("🤖 Calling chat completion...")
@@ -658,8 +816,17 @@ class ChatInterface:
             except Exception as e:
                 print(f"❌ History validation error: {e}")
             
+            # Save successful session
+            self.session_manager.save_session(session_id, new_history, {
+                'system_prompt': system_prompt,
+                'custom_prompt': custom_prompt,
+                'temperature': temperature,
+                'max_tokens': max_tokens
+            })
+            
             print(f"🔄 UI DEBUG: Returning empty message and {len(new_history)} history items")
-            return "", new_history, None
+            print(f"💾 Session {session_id} saved with {len(new_history)} messages")
+            return "", new_history, None, session_id
             
         except Exception as e:
             error_msg = f"❌ Processing error: {str(e)}"
@@ -667,11 +834,56 @@ class ChatInterface:
             print(f"🔍 Traceback: {traceback.format_exc()}")
             
             new_history = history + [[message, error_msg]]
+            # Save session with error
+            self.session_manager.save_session(session_id, new_history, {
+                'system_prompt': system_prompt,
+                'custom_prompt': custom_prompt,
+                'temperature': temperature,
+                'max_tokens': max_tokens
+            })
             print(f"🔄 UI DEBUG: Error case - returning {len(new_history)} history items")
-            return "", new_history, None
+            return "", new_history, None, session_id
         
         finally:
             self._processing = False
+    
+    def load_session(self, session_id: str) -> Tuple[List[List[str]], str, str, float, int]:
+        """Load session and return history and settings"""
+        if not session_id:
+            return [], "Default Assistant", "", self.config.default_temperature, self.config.default_max_tokens
+        
+        session_data = self.session_manager.load_session(session_id)
+        settings = session_data.get('settings', {})
+        
+        return (
+            session_data.get('history', []),
+            settings.get('system_prompt', 'Default Assistant'),
+            settings.get('custom_prompt', ''),
+            settings.get('temperature', self.config.default_temperature),
+            settings.get('max_tokens', self.config.default_max_tokens)
+        )
+    
+    def new_session(self) -> Tuple[List[List[str]], str]:
+        """Create a new session"""
+        session_id = self.session_manager.create_session()
+        return [], session_id
+    
+    def get_session_list(self) -> str:
+        """Get formatted list of sessions"""
+        sessions = self.session_manager.list_sessions()
+        if not sessions:
+            return "No active sessions found."
+        
+        session_text = "# 📂 Active Sessions\n\n"
+        for session in sessions[:10]:  # Show last 10 sessions
+            created = datetime.fromtimestamp(session['created']).strftime('%Y-%m-%d %H:%M')
+            accessed = datetime.fromtimestamp(session['accessed']).strftime('%Y-%m-%d %H:%M')
+            session_text += f"**Session {session['id']}**\n"
+            session_text += f"- Messages: {session['messages']}\n"
+            session_text += f"- Created: {created}\n"
+            session_text += f"- Last accessed: {accessed}\n\n"
+        
+        return session_text
     
     def _process_file(self, file) -> str:
         """Process uploaded file with size limits"""
@@ -1012,6 +1224,20 @@ class ChatInterface:
                     else:
                         gr.Markdown("❌ **Status:** Offline")
             
+            # Session management row
+            with gr.Row():
+                with gr.Column(scale=2):
+                    session_id_input = gr.Textbox(
+                        label="🔑 Session ID",
+                        placeholder="Leave empty for new session or enter existing session ID",
+                        value="",
+                        interactive=True
+                    )
+                with gr.Column(scale=1):
+                    load_session_btn = gr.Button("📂 Load Session", variant="secondary")
+                    new_session_btn = gr.Button("🆕 New Session", variant="primary")
+                    list_sessions_btn = gr.Button("📋 List Sessions", variant="secondary")
+            
             # Main content area with tabs for better organization
             with gr.Tabs():
                 with gr.TabItem("💬 Chat"):
@@ -1128,6 +1354,22 @@ class ChatInterface:
                                 value="Click 'Run Diagnostics' to test the connection..."
                             )
                 
+                with gr.TabItem("📂 Sessions"):
+                    with gr.Row():
+                        with gr.Column():
+                            gr.Markdown("### Session Information")
+                            sessions_info = gr.Textbox(
+                                label="📋 Active Sessions",
+                                lines=15,
+                                max_lines=20,
+                                value="Click 'List Sessions' to view active sessions...",
+                                interactive=False
+                            )
+                            
+                            with gr.Row():
+                                refresh_sessions_btn = gr.Button("🔄 Refresh Sessions", variant="secondary")
+                                cleanup_sessions_btn = gr.Button("🧹 Cleanup Expired", variant="secondary")
+                
                 with gr.TabItem("📝 Prompt Manager"):
                     with gr.Row():
                         with gr.Column(scale=1):
@@ -1243,22 +1485,21 @@ class ChatInterface:
                 outputs=[msg, chatbot, file_upload]
             )
             
-            # Message handling - use only submit (Enter key) to prevent duplicate triggers
+            # Message handling with session management
             msg.submit(
                 self.process_message,
                 inputs=[msg, chatbot, system_dropdown, custom_system, 
-                       temperature, max_tokens, file_upload],
-                outputs=[msg, chatbot, file_upload],
-                show_progress="minimal"  # Minimize progress indicator
+                       temperature, max_tokens, file_upload, session_id_input],
+                outputs=[msg, chatbot, file_upload, session_id_input],
+                show_progress="minimal"
             )
             
-            # Button click also triggers the same function
             submit.click(
                 self.process_message,
                 inputs=[msg, chatbot, system_dropdown, custom_system,
-                       temperature, max_tokens, file_upload],
-                outputs=[msg, chatbot, file_upload],
-                show_progress="minimal"  # Minimize progress indicator
+                       temperature, max_tokens, file_upload, session_id_input],
+                outputs=[msg, chatbot, file_upload, session_id_input],
+                show_progress="minimal"
             )
             
             # Clear history
@@ -1354,6 +1595,53 @@ class ChatInterface:
             clear_form_btn.click(
                 clear_form_handler,
                 outputs=[edit_prompt_name, edit_prompt_content, prompt_status]
+            )
+            
+            # Session management handlers
+            def load_session_handler(session_id):
+                if not session_id.strip():
+                    return [], "Default Assistant", "", self.config.default_temperature, self.config.default_max_tokens, "Please enter a session ID"
+                
+                history, sys_prompt, custom_prompt, temp, tokens = self.load_session(session_id)
+                status = f"Loaded session {session_id} with {len(history)} messages"
+                return history, sys_prompt, custom_prompt, temp, tokens, status
+            
+            def new_session_handler():
+                history, session_id = self.new_session()
+                return history, session_id, f"Created new session: {session_id}"
+            
+            def list_sessions_handler():
+                return self.get_session_list()
+            
+            def cleanup_sessions_handler():
+                cleaned = self.session_manager.cleanup_expired_sessions()
+                return f"Cleaned up {cleaned} expired sessions"
+            
+            # Wire up session management
+            load_session_btn.click(
+                load_session_handler,
+                inputs=[session_id_input],
+                outputs=[chatbot, system_dropdown, custom_system, temperature, max_tokens, context_info]
+            )
+            
+            new_session_btn.click(
+                new_session_handler,
+                outputs=[chatbot, session_id_input, context_info]
+            )
+            
+            list_sessions_btn.click(
+                list_sessions_handler,
+                outputs=[sessions_info]
+            )
+            
+            refresh_sessions_btn.click(
+                list_sessions_handler,
+                outputs=[sessions_info]
+            )
+            
+            cleanup_sessions_btn.click(
+                cleanup_sessions_handler,
+                outputs=[sessions_info]
             )
         
         return interface
