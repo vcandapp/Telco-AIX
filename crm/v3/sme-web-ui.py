@@ -540,6 +540,7 @@ class ChatInterface:
         self.config = config
         self.client = ChatClient(config)
         self.system_prompts = SYSTEM_PROMPTS.copy()  # Keep a local copy
+        self._processing = False  # Flag to prevent double processing
     
     def process_message(
         self,
@@ -550,56 +551,64 @@ class ChatInterface:
         temperature: float,
         max_tokens: int,
         uploaded_file: Optional[Any] = None
-    ) -> Tuple[str, List[List[str]]]:
+    ) -> Tuple[str, List[List[str]], Optional[Any]]:
         """Enhanced message processing with UI debugging"""
         
         if not message.strip():
-            return "", history
+            return "", history, None
         
-        print(f"\n{'='*60}")
-        print(f"🚀 PROCESSING: '{message[:50]}{'...' if len(message) > 50 else ''}'")
-        print(f"🌡️ TEMPERATURE: {temperature}")
-        print(f"📏 MAX_TOKENS: {max_tokens}")
-        print(f"🎯 SYSTEM_PROMPT: {system_prompt}")
-        print(f"{'='*60}")
+        # Prevent double processing
+        if self._processing:
+            print("⚠️ Already processing, ignoring duplicate request")
+            return "", history, None
         
-        # Build system prompt
-        active_system_prompt = custom_prompt if custom_prompt.strip() else self.system_prompts.get(system_prompt, "")
+        self._processing = True
         
-        # Build messages list
-        messages = []
-        if active_system_prompt:
-            messages.append({"role": "system", "content": active_system_prompt})
-        
-        # Add conversation history (limit to prevent huge contexts)
-        recent_history = history[-10:] if len(history) > 10 else history
-        for user_msg, assistant_msg in recent_history:
-            if user_msg:
-                messages.append({"role": "user", "content": user_msg})
-            if assistant_msg:
-                messages.append({"role": "assistant", "content": assistant_msg})
-        
-        # Handle file upload with size limits
-        if uploaded_file is not None:
-            file_content = self._process_file(uploaded_file)
-            message = f"{message}\n\n[File content]:\n{file_content}"
-        
-        # Add current message
-        messages.append({"role": "user", "content": message})
-        
-        # Context analysis
-        context_size = sum(len(msg.get('content', '')) for msg in messages)
-        print(f"📊 Context: {context_size} chars, Temp: {temperature}, Tokens: {max_tokens}")
-        
-        if context_size > 20000:
-            error_response = "❌ Context too large. Please start a new conversation or upload a smaller file."
-            print(f"❌ Context too large: {context_size} chars")
-            new_history = history + [[message, error_response]]
-            print(f"🔄 UI DEBUG: Returning history with {len(new_history)} items")
-            return "", new_history
-        
-        # Process with smart completion
         try:
+            print(f"\n{'='*60}")
+            print(f"🚀 PROCESSING: '{message[:50]}{'...' if len(message) > 50 else ''}'")
+            print(f"🌡️ TEMPERATURE: {temperature}")
+            print(f"📏 MAX_TOKENS: {max_tokens}")
+            print(f"🎯 SYSTEM_PROMPT: {system_prompt}")
+            print(f"{'='*60}")
+            
+            # Build system prompt
+            active_system_prompt = custom_prompt if custom_prompt.strip() else self.system_prompts.get(system_prompt, "")
+            
+            # Build messages list
+            messages = []
+            if active_system_prompt:
+                messages.append({"role": "system", "content": active_system_prompt})
+            
+            # Add conversation history (limit to prevent huge contexts)
+            recent_history = history[-10:] if len(history) > 10 else history
+            for user_msg, assistant_msg in recent_history:
+                if user_msg:
+                    messages.append({"role": "user", "content": user_msg})
+                if assistant_msg:
+                    messages.append({"role": "assistant", "content": assistant_msg})
+            
+            # Handle file upload with size limits (only for current message)
+            if uploaded_file is not None:
+                file_content = self._process_file(uploaded_file)
+                message = f"{message}\n\n[File content]:\n{file_content}"
+                print(f"📎 File attached: {getattr(uploaded_file, 'name', 'unknown')} ({len(file_content)} chars)")
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+            
+            # Context analysis
+            context_size = sum(len(msg.get('content', '')) for msg in messages)
+            print(f"📊 Context: {context_size} chars, Temp: {temperature}, Tokens: {max_tokens}")
+            
+            if context_size > 20000:
+                error_response = "❌ Context too large. Please start a new conversation or upload a smaller file."
+                print(f"❌ Context too large: {context_size} chars")
+                new_history = history + [[message, error_response]]
+                print(f"🔄 UI DEBUG: Returning history with {len(new_history)} items")
+                return "", new_history, None
+            
+            # Process with smart completion
             print("🤖 Calling chat completion...")
             response = self.client.chat_completion(
                 messages=messages,
@@ -650,7 +659,7 @@ class ChatInterface:
                 print(f"❌ History validation error: {e}")
             
             print(f"🔄 UI DEBUG: Returning empty message and {len(new_history)} history items")
-            return "", new_history
+            return "", new_history, None
             
         except Exception as e:
             error_msg = f"❌ Processing error: {str(e)}"
@@ -659,7 +668,10 @@ class ChatInterface:
             
             new_history = history + [[message, error_msg]]
             print(f"🔄 UI DEBUG: Error case - returning {len(new_history)} history items")
-            return "", new_history
+            return "", new_history, None
+        
+        finally:
+            self._processing = False
     
     def _process_file(self, file) -> str:
         """Process uploaded file with size limits"""
@@ -712,7 +724,7 @@ class ChatInterface:
         except Exception as e:
             return f"# 🧪 Streaming Test Results\n\n**Status:** FAILED\n**Error:** {str(e)}"
     
-    def test_ui_update(self, history: List[List[str]]) -> Tuple[str, List[List[str]]]:
+    def test_ui_update(self, history: List[List[str]]) -> Tuple[str, List[List[str]], Optional[Any]]:
         """Test UI update with a sample response"""
         print("🧪 Testing UI update...")
         test_response = "This is a test response to verify UI updates are working correctly. ✅"
@@ -721,7 +733,7 @@ class ChatInterface:
         new_history = history + [[test_message, test_response]]
         print(f"🔄 UI TEST: Added entry, total items: {len(new_history)}")
         
-        return "", new_history
+        return "", new_history, None
     
     def reload_system_prompts(self) -> str:
         """Reload system prompts from file"""
@@ -965,6 +977,21 @@ class ChatInterface:
                 min-width: 100%;
             }
         }
+        
+        /* Hide duplicate progress bars */
+        .progress-bar:nth-of-type(n+2) {
+            display: none !important;
+        }
+        
+        /* Limit progress bars to single instance */
+        .gradio-container .wrap:has(.progress-bar) .progress-bar ~ .progress-bar {
+            display: none !important;
+        }
+        
+        /* Clean up processing indicators */
+        .processing-indicator {
+            max-height: 4px !important;
+        }
         """
         
         with gr.Blocks(title="Telco-AIX SME Web Interface", theme=gr.themes.Soft(), css=custom_css) as interface:
@@ -1060,7 +1087,7 @@ class ChatInterface:
                             
                             max_tokens = gr.Slider(
                                 minimum=100,
-                                maximum=4096,
+                                maximum=8192,
                                 value=self.config.default_max_tokens,
                                 step=100,
                                 label="📏 Max Tokens",
@@ -1213,24 +1240,25 @@ class ChatInterface:
             ui_test_btn.click(
                 self.test_ui_update,
                 inputs=[chatbot],
-                outputs=[msg, chatbot]
+                outputs=[msg, chatbot, file_upload]
             )
             
-            # Message handling
+            # Message handling - use only submit (Enter key) to prevent duplicate triggers
             msg.submit(
                 self.process_message,
                 inputs=[msg, chatbot, system_dropdown, custom_system, 
                        temperature, max_tokens, file_upload],
-                outputs=[msg, chatbot],
-                queue=True
+                outputs=[msg, chatbot, file_upload],
+                show_progress="minimal"  # Minimize progress indicator
             )
             
+            # Button click also triggers the same function
             submit.click(
                 self.process_message,
                 inputs=[msg, chatbot, system_dropdown, custom_system,
                        temperature, max_tokens, file_upload],
-                outputs=[msg, chatbot],
-                queue=True
+                outputs=[msg, chatbot, file_upload],
+                show_progress="minimal"  # Minimize progress indicator
             )
             
             # Clear history
