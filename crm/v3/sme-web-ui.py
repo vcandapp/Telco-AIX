@@ -743,6 +743,7 @@ class ChatInterface:
                     current_prompts = json.load(f)
             
             # Add/update the prompt
+            action = "updated" if prompt_name in current_prompts else "created"
             current_prompts[prompt_name] = prompt_content
             
             # Save back to file
@@ -752,9 +753,50 @@ class ChatInterface:
             # Reload prompts
             self.system_prompts = load_system_prompts()
             
-            return f"✅ Successfully saved prompt '{prompt_name}'"
+            return f"✅ Successfully {action} prompt '{prompt_name}'"
         except Exception as e:
             return f"❌ Error saving prompt: {str(e)}"
+    
+    def delete_prompt(self, prompt_name: str) -> str:
+        """Delete a prompt from the file"""
+        if not prompt_name:
+            return "❌ Please select a prompt to delete"
+        
+        if prompt_name in ["Default Assistant", "Technical Expert", "Code Assistant"]:
+            return "❌ Cannot delete core system prompts"
+        
+        try:
+            prompts_file = os.path.join(os.path.dirname(__file__), "system_prompts.json")
+            
+            # Load current prompts
+            current_prompts = {}
+            if os.path.exists(prompts_file):
+                with open(prompts_file, 'r', encoding='utf-8') as f:
+                    current_prompts = json.load(f)
+            
+            if prompt_name not in current_prompts:
+                return f"❌ Prompt '{prompt_name}' not found"
+            
+            # Remove the prompt
+            del current_prompts[prompt_name]
+            
+            # Save back to file
+            with open(prompts_file, 'w', encoding='utf-8') as f:
+                json.dump(current_prompts, f, indent=4, ensure_ascii=False)
+            
+            # Reload prompts
+            self.system_prompts = load_system_prompts()
+            
+            return f"✅ Successfully deleted prompt '{prompt_name}'"
+        except Exception as e:
+            return f"❌ Error deleting prompt: {str(e)}"
+    
+    def load_prompt_for_editing(self, prompt_name: str) -> tuple:
+        """Load a prompt for editing"""
+        if not prompt_name or prompt_name not in self.system_prompts:
+            return "", ""
+        
+        return prompt_name, self.system_prompts[prompt_name]
     
     def run_diagnostics(self) -> str:
         """Run comprehensive diagnostics"""
@@ -1046,11 +1088,23 @@ class ChatInterface:
                 
                 with gr.TabItem("📝 Prompt Manager"):
                     with gr.Row():
-                        with gr.Column():
+                        with gr.Column(scale=1):
                             gr.Markdown("### System Prompt Management")
                             
+                            # Existing prompts section
+                            gr.Markdown("### 📚 Existing Prompts")
+                            existing_prompt_dropdown = gr.Dropdown(
+                                choices=list(self.system_prompts.keys()),
+                                value=list(self.system_prompts.keys())[0] if self.system_prompts else None,
+                                label="Select Prompt to Edit",
+                                interactive=True
+                            )
+                            
+                            load_prompt_btn = gr.Button("📖 Load Selected Prompt", variant="secondary")
+                            
                             with gr.Row():
-                                reload_prompts_btn = gr.Button("🔄 Reload Prompts from File", variant="secondary")
+                                reload_prompts_btn = gr.Button("🔄 Reload from File", variant="secondary")
+                                delete_prompt_btn = gr.Button("🗑️ Delete Selected", variant="stop")
                             
                             prompt_status = gr.Textbox(
                                 label="Status",
@@ -1058,25 +1112,33 @@ class ChatInterface:
                                 value="Ready to manage prompts..."
                             )
                             
-                            gr.Markdown("### Save New Prompt")
-                            new_prompt_name = gr.Textbox(
+                        with gr.Column(scale=2):
+                            gr.Markdown("### ✏️ Edit Prompt")
+                            edit_prompt_name = gr.Textbox(
                                 label="Prompt Name",
-                                placeholder="e.g., Security Expert, Project Manager..."
+                                placeholder="e.g., Security Expert, Project Manager...",
+                                interactive=True
                             )
-                            new_prompt_content = gr.Textbox(
+                            edit_prompt_content = gr.Textbox(
                                 label="Prompt Content",
                                 placeholder="Enter the full system prompt...",
-                                lines=6
+                                lines=10,
+                                max_lines=20,
+                                interactive=True
                             )
-                            save_prompt_btn = gr.Button("💾 Save Prompt", variant="primary")
+                            
+                            with gr.Row():
+                                save_prompt_btn = gr.Button("💾 Save/Update Prompt", variant="primary")
+                                clear_form_btn = gr.Button("🆕 Clear Form", variant="secondary")
                             
                             gr.Markdown(
                                 """
-                                ### 💡 Tips
-                                - Prompts are saved to `system_prompts.json`
-                                - Use clear, descriptive names
-                                - Include role, expertise, and methodology
-                                - Reload after manual file edits
+                                ### 💡 Usage Tips
+                                - **Load**: Select a prompt and click "Load" to edit
+                                - **Save**: Updates existing or creates new prompt
+                                - **Delete**: Removes selected prompt permanently
+                                - **Clear**: Start fresh with empty form
+                                - All changes are saved to `system_prompts.json`
                                 """
                             )
             
@@ -1160,25 +1222,79 @@ class ChatInterface:
             # Prompt management handlers
             def reload_prompts_handler():
                 result = self.reload_system_prompts()
-                # Update dropdown choices
-                return result, gr.update(choices=list(self.system_prompts.keys()))
+                # Update all dropdown choices
+                choices = list(self.system_prompts.keys())
+                return (
+                    result, 
+                    gr.update(choices=choices),
+                    gr.update(choices=choices, value=choices[0] if choices else None)
+                )
             
             reload_prompts_btn.click(
                 reload_prompts_handler,
-                outputs=[prompt_status, system_dropdown]
+                outputs=[prompt_status, system_dropdown, existing_prompt_dropdown]
             )
             
+            # Load prompt for editing
+            def load_prompt_handler(prompt_name):
+                name, content = self.load_prompt_for_editing(prompt_name)
+                status = f"Loaded prompt '{prompt_name}' for editing" if name else "No prompt selected"
+                return name, content, status
+            
+            load_prompt_btn.click(
+                load_prompt_handler,
+                inputs=[existing_prompt_dropdown],
+                outputs=[edit_prompt_name, edit_prompt_content, prompt_status]
+            )
+            
+            # Save/update prompt
             def save_prompt_handler(name, content):
                 result = self.save_custom_prompt(name, content)
                 # Update dropdown choices if successful
                 if "✅" in result:
-                    return result, gr.update(choices=list(self.system_prompts.keys())), "", ""
-                return result, gr.update(), name, content
+                    choices = list(self.system_prompts.keys())
+                    return (
+                        result, 
+                        gr.update(choices=choices),
+                        gr.update(choices=choices, value=name),
+                        name,  # Keep name
+                        content  # Keep content
+                    )
+                return result, gr.update(), gr.update(), name, content
             
             save_prompt_btn.click(
                 save_prompt_handler,
-                inputs=[new_prompt_name, new_prompt_content],
-                outputs=[prompt_status, system_dropdown, new_prompt_name, new_prompt_content]
+                inputs=[edit_prompt_name, edit_prompt_content],
+                outputs=[prompt_status, system_dropdown, existing_prompt_dropdown, edit_prompt_name, edit_prompt_content]
+            )
+            
+            # Delete prompt
+            def delete_prompt_handler(prompt_name):
+                result = self.delete_prompt(prompt_name)
+                if "✅" in result:
+                    choices = list(self.system_prompts.keys())
+                    return (
+                        result,
+                        gr.update(choices=choices),
+                        gr.update(choices=choices, value=choices[0] if choices else None),
+                        "",  # Clear edit form
+                        ""   # Clear edit form
+                    )
+                return result, gr.update(), gr.update(), gr.update(), gr.update()
+            
+            delete_prompt_btn.click(
+                delete_prompt_handler,
+                inputs=[existing_prompt_dropdown],
+                outputs=[prompt_status, system_dropdown, existing_prompt_dropdown, edit_prompt_name, edit_prompt_content]
+            )
+            
+            # Clear form
+            def clear_form_handler():
+                return "", "", "Form cleared - ready for new prompt"
+            
+            clear_form_btn.click(
+                clear_form_handler,
+                outputs=[edit_prompt_name, edit_prompt_content, prompt_status]
             )
         
         return interface
