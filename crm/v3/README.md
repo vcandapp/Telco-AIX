@@ -1,87 +1,186 @@
-# System Prompts Configuration
+# Telco-AIX SME Web Interface
+
+![Web UI Screenshot](webui.png)
 
 ## Overview
-The SME Web UI now supports loading system prompts from an external JSON file (`system_prompts.json`), making it easy to customize and manage different AI personas without modifying the code.
-
-## File Structure
-The system prompts are stored in `system_prompts.json` with the following structure:
-
-```json
-{
-    "Prompt Name": "Prompt content with full description...",
-    "Another Prompt": "Another prompt content..."
-}
-```
-
-## Available System Prompts
-
-1. **Default Assistant** - General-purpose AI assistant with systematic approach
-2. **Technical Expert** - Senior technical expert for architecture and engineering
-3. **Code Assistant** - Expert programmer for production-ready code
-4. **Data Analyst** - Data analysis and business insights expert
-5. **Creative Writer** - Strategic content creation expert
-6. **Network Expert** - Network architecture and engineering specialist
-7. **Telco Expert** - Telecommunications solutions architect
-8. **Custom** - Placeholder for user-defined prompts
+The Telco-AIX SME (Subject Matter Expert) Web Interface is a sophisticated chat application designed for telecommunications professionals. It provides AI-powered conversations with specialized knowledge in telco technologies, network architecture, and technical solutions.
 
 ## Features
 
-### 1. External File Loading
-- System prompts are loaded from `system_prompts.json` at startup
-- Falls back to default prompts if file is not found or has errors
+### 🤖 **AI-Powered Conversations**
+- **Multiple Expert Personas**: Choose from specialized system prompts for different domains
+- **Intelligent Responses**: Context-aware AI with telecommunications expertise
+- **Smart Streaming**: Automatic streaming for large contexts and responses
+- **File Upload Support**: Attach and analyze technical documents
 
-### 2. Dynamic Reload
-- Click "🔄 Reload Prompts" button to reload prompts from file without restarting
-- Useful when editing the JSON file directly
+### 📂 **Persistent Sessions**
+- **Session Management**: Create, load, and manage conversation sessions
+- **Browser Refresh Resilience**: Never lose conversation progress
+- **Session Sharing**: Share session IDs for collaboration
+- **Auto-Save**: All conversations and settings automatically saved
+- **24-Hour Retention**: Sessions persist for 24 hours with automatic cleanup
 
-### 3. Save Custom Prompts
-- Use the "💾 Save Custom Prompt" accordion in the UI
-- Enter a name and content for your custom prompt
-- Click "💾 Save Prompt" to add it to the system_prompts.json file
-- The dropdown will automatically update with the new prompt
+### ⚙️ **Advanced Configuration**
+- **Temperature Control**: Adjust AI creativity (0=focused, 1=creative)
+- **Token Limits**: Configure response length up to 8192 tokens
+- **System Prompts**: 8 specialized expert personas plus custom options
+- **Real-time Settings**: All parameters update dynamically
 
-### 4. Edit Existing Prompts
-- Edit the `system_prompts.json` file directly
-- Click "🔄 Reload Prompts" to apply changes
+### 🎯 **Expert Domains**
+1. **Default Assistant** - Systematic problem-solving approach
+2. **Technical Expert** - Software, cloud, and AI/ML architecture
+3. **Code Assistant** - Production-ready, maintainable code
+4. **Data Analyst** - Business insights and analytics
+5. **Creative Writer** - Strategic content creation
+6. **Network Expert** - Network architecture and SDN/NFV
+7. **Telco Expert** - 5G/6G, RAN, Core networks, standards
+8. **Custom** - R&D and Sales Engineering focus
 
-## Usage Examples
+## Installation
 
-### Adding a New Prompt via UI
-1. Expand "💾 Save Custom Prompt" section
-2. Enter prompt name: "Security Expert"
-3. Enter prompt content: "You are a cybersecurity expert..."
-4. Click "💾 Save Prompt"
-5. Select "Security Expert" from the dropdown
+### Prerequisites
+- Python 3.8 or higher
+- Required packages (see requirements.txt)
 
-### Editing Prompts Directly
-1. Open `system_prompts.json` in a text editor
-2. Modify existing prompts or add new ones
-3. Save the file
-4. Click "🔄 Reload Prompts" in the UI
+### Setup
+1. Clone or download the repository
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```bash
+   python sme-web-ui.py
+   ```
+4. Access the web interface at: `http://localhost:30180`
 
-### Using Custom Prompts
-1. Select a prompt from the dropdown OR
-2. Enter a custom prompt in the "Custom System Prompt" text area
-3. Custom prompt text always overrides the selected template
+### Authentication
+- **Username**: `admin`
+- **Password**: `minad`
 
-## Best Practices
+## Usage
 
-1. **Backup**: Keep a backup of your customized `system_prompts.json`
-2. **Formatting**: Use proper JSON formatting with escaped characters
-3. **Testing**: Test new prompts before saving to ensure they work as expected
-4. **Organization**: Use clear, descriptive names for your prompts
-5. **Version Control**: Track changes to system_prompts.json in git
+### Getting Started
+1. **New Session**: Leave Session ID empty or click "🆕 New Session"
+2. **Load Session**: Enter existing Session ID and click "📂 Load Session"
+3. **Select Expert**: Choose appropriate system prompt from dropdown
+4. **Configure Settings**: Adjust temperature and max tokens as needed
+5. **Start Chatting**: Type your message and press Enter or click Send
+
+### Session Management
+- **Session IDs**: 8-character unique identifiers (e.g., "a1b2c3d4")
+- **Persistence**: Sessions survive browser refreshes and server restarts
+- **Recovery**: Enter session ID to continue previous conversations
+- **Cleanup**: Expired sessions automatically removed after 24 hours
+
+### File Uploads
+- **Supported Formats**: .txt, .md, .csv, .json, .py
+- **Size Limit**: 3,500 characters to prevent timeouts
+- **One-time Use**: Files apply only to current message, not subsequent ones
+
+## System Prompts Configuration
+
+### External File Loading
+System prompts are loaded from `system_prompts.json`, making it easy to customize AI personas without code changes.
+
+### File Structure
+```json
+{
+    "Prompt Name": "Detailed prompt content with role, expertise, and methodology...",
+    "Another Expert": "Another specialized prompt..."
+}
+```
+
+### Management Features
+- **Dynamic Reload**: Reload prompts without restarting
+- **UI Editor**: Create and edit prompts directly in the web interface
+- **Export/Import**: Manage prompts through JSON file editing
+- **Validation**: Automatic syntax checking and error handling
+
+### Adding Custom Prompts
+1. Go to "📝 Prompt Manager" tab
+2. Enter prompt name and detailed content
+3. Click "💾 Save Prompt"
+4. Prompt immediately available in dropdown
+
+## Architecture
+
+### Components
+- **SessionManager**: File-based session persistence using pickle
+- **ChatClient**: HTTP client with streaming support and retries
+- **ChatInterface**: Main UI logic and event handling
+- **SystemPrompts**: Dynamic prompt loading and management
+
+### Technical Features
+- **Smart Context Management**: Automatic streaming for large contexts
+- **Retry Logic**: Robust error handling with exponential backoff
+- **Thread Safety**: Concurrent request handling with processing locks
+- **Memory Optimization**: Context size limits and history management
+
+### File Structure
+```
+├── sme-web-ui.py           # Main application
+├── system_prompts.json     # Expert persona definitions
+├── sessions/               # Session storage directory (auto-created)
+├── requirements.txt        # Python dependencies
+├── webui.png              # Web interface screenshot
+└── README.md              # This documentation
+```
+
+## Configuration
+
+### Environment Variables
+- Default API endpoint: `https://qwen3-32b-vllm-latest-tme-aix.apps.sandbox01.narlabs.io`
+- Model: `qwen3-32b-vllm-latest`
+- Port: `30180`
+- SSL verification disabled for development environments
+
+### Customization
+- Edit `Config` class in `sme-web-ui.py` for API endpoints
+- Modify `system_prompts.json` for expert personas
+- Adjust timeout and retry settings as needed
 
 ## Troubleshooting
 
-- **Prompts not loading**: Check JSON syntax in system_prompts.json
-- **Changes not appearing**: Click "🔄 Reload Prompts" after editing
-- **Error messages**: Check the console output for detailed error information
-- **Default prompts appear**: Indicates an issue with the JSON file - check syntax
+### Common Issues
+- **Connection Problems**: Check API endpoint and network connectivity
+- **Session Loading**: Verify session ID format (8 characters)
+- **Prompt Errors**: Validate JSON syntax in system_prompts.json
+- **Performance**: Reduce context size or max tokens for faster responses
 
-## JSON Formatting Tips
+### Diagnostics
+1. Go to "🔧 Diagnostics" tab
+2. Click "🔍 Run Diagnostics" to test all connections
+3. Check console output for detailed error information
 
-- Use `\n` for line breaks within prompt content
-- Escape quotes with `\"`
-- Use online JSON validators to check syntax
-- Keep prompts concise but comprehensive
+### Session Management
+- **List Sessions**: View all active sessions with details
+- **Cleanup**: Remove expired sessions manually
+- **Backup**: Session files stored in `sessions/` directory
+
+## Development
+
+### Key Files
+- `sme-web-ui.py`: Main application with all classes and UI
+- `system_prompts.json`: Expert persona definitions
+- `requirements.txt`: Python package dependencies
+
+### Adding Features
+1. **New Expert Domains**: Add entries to `system_prompts.json`
+2. **UI Modifications**: Update `create_interface()` method
+3. **Session Features**: Extend `SessionManager` class
+4. **API Integration**: Modify `ChatClient` class
+
+## License and Support
+
+This is a development tool for telecommunications professionals working with AI-powered solutions. For support and feature requests, refer to the development team.
+
+## Version History
+
+- **v3.0**: Added persistent sessions, enhanced UI, system prompt management
+- **v2.0**: Streaming support, file uploads, diagnostics
+- **v1.0**: Basic chat interface with telco expertise
+
+---
+
+**Note**: This interface is designed for professional telecommunications use cases and requires appropriate model access and configuration.
