@@ -23,7 +23,7 @@ The Telco-AIX SME (Subject Matter Expert) Web Interface is a sophisticated chat 
 ### ⚙️ **Advanced Configuration**
 - **Temperature Control**: Adjust AI creativity (0=focused, 1=creative)
 - **Token Limits**: Configure response length up to 8192 tokens
-- **System Prompts**: 8 specialized expert personas plus custom options
+- **System Prompts**: 5 specialized expert personas plus custom options
 - **Real-time Settings**: All parameters update dynamically
 
 ### 🎯 **Expert Domains**
