@@ -30,8 +30,8 @@ class Config:
     """Enhanced configuration for the chat application"""
     api_endpoint: str = "https://qwen3-32b-vllm-latest-tme-aix.apps.sandbox01.narlabs.io"
     model_name: str = "qwen3-32b-vllm-latest"
-    default_temperature: float = 0.6
-    default_max_tokens: int = 2048
+    default_temperature: float = 0.3
+    default_max_tokens: int = 4192
     admin_username: str = "admin"
     admin_password: str = "minad"
     verify_ssl: bool = False
@@ -97,8 +97,8 @@ class SessionManager:
             'settings': {
                 'system_prompt': 'Default Assistant',
                 'custom_prompt': '',
-                'temperature': 0.6,
-                'max_tokens': 2048
+                'temperature': 0.3,
+                'max_tokens': 4192
             }
         })
         print(f"📂 Created new session: {session_id}")
@@ -174,8 +174,8 @@ class SessionManager:
             'settings': {
                 'system_prompt': 'Default Assistant',
                 'custom_prompt': '',
-                'temperature': 0.6,
-                'max_tokens': 2048
+                'temperature': 0.3,
+                'max_tokens': 4192
             }
         }
     
@@ -868,22 +868,25 @@ class ChatInterface:
         session_id = self.session_manager.create_session()
         return [], session_id
     
-    def get_session_list(self) -> str:
-        """Get formatted list of sessions"""
+    def get_session_list(self) -> Tuple[str, List[str]]:
+        """Get formatted list of sessions and their IDs"""
         sessions = self.session_manager.list_sessions()
         if not sessions:
-            return "No active sessions found."
+            return "No active sessions found.", []
         
         session_text = "# 📂 Active Sessions\n\n"
-        for session in sessions[:10]:  # Show last 10 sessions
+        session_ids = []
+        
+        for i, session in enumerate(sessions[:10]):  # Show last 10 sessions
             created = datetime.fromtimestamp(session['created']).strftime('%Y-%m-%d %H:%M')
             accessed = datetime.fromtimestamp(session['accessed']).strftime('%Y-%m-%d %H:%M')
-            session_text += f"**Session {session['id']}**\n"
+            session_text += f"**[{i+1}] Session `{session['id']}`**\n"
             session_text += f"- Messages: {session['messages']}\n"
             session_text += f"- Created: {created}\n"
             session_text += f"- Last accessed: {accessed}\n\n"
+            session_ids.append(session['id'])
         
-        return session_text
+        return session_text, session_ids
     
     def _process_file(self, file) -> str:
         """Process uploaded file with size limits"""
@@ -1238,6 +1241,21 @@ class ChatInterface:
                     new_session_btn = gr.Button("🆕 New Session", variant="primary")
                     list_sessions_btn = gr.Button("📋 List Sessions", variant="secondary")
             
+            # Sessions list display (collapsible)
+            with gr.Accordion("📂 Active Sessions", open=False) as sessions_accordion:
+                with gr.Row():
+                    with gr.Column(scale=3):
+                        sessions_display = gr.Markdown("Click 'List Sessions' to view active sessions...")
+                    with gr.Column(scale=1):
+                        gr.Markdown("**Quick Load:**")
+                        session_dropdown = gr.Dropdown(
+                            choices=[],
+                            label="Select Session",
+                            interactive=True,
+                            show_label=False
+                        )
+                        quick_load_btn = gr.Button("⚡ Quick Load", variant="primary", size="sm")
+            
             # Main content area with tabs for better organization
             with gr.Tabs():
                 with gr.TabItem("💬 Chat"):
@@ -1294,7 +1312,7 @@ class ChatInterface:
                             
                             system_dropdown = gr.Dropdown(
                                 choices=list(self.system_prompts.keys()),
-                                value="Default Assistant",
+                                value="Telco Expert",
                                 label="System Prompt",
                                 scale=1
                             )
@@ -1330,11 +1348,11 @@ class ChatInterface:
                             
                             # Custom system prompt (always accessible)
                             custom_system = gr.Textbox(
-                                label="🎯 Custom System Prompt",
+                                label="🎯 Selected System Prompt Detail",
                                 placeholder="Override selected template with custom prompt...",
                                 lines=4,
                                 scale=1,
-                                info="Overrides the selected system prompt above"
+                                info="To edit templates permanently, use the 📝 Prompt Manager tab."
                             )
                 
                 # Additional tabs for better organization
@@ -1611,11 +1629,34 @@ class ChatInterface:
                 return history, session_id, f"Created new session: {session_id}"
             
             def list_sessions_handler():
-                return self.get_session_list()
+                sessions_text, session_ids = self.get_session_list()
+                # Create dropdown choices with session info
+                dropdown_choices = []
+                sessions = self.session_manager.list_sessions()
+                for session in sessions[:10]:
+                    created = datetime.fromtimestamp(session['created']).strftime('%m-%d %H:%M')
+                    label = f"{session['id']} ({session['messages']} msgs, {created})"
+                    dropdown_choices.append((label, session['id']))
+                
+                # Return for displays, dropdown update, and open accordion
+                return (
+                    sessions_text, 
+                    sessions_text, 
+                    gr.update(open=True),
+                    gr.update(choices=dropdown_choices)
+                )
             
             def cleanup_sessions_handler():
                 cleaned = self.session_manager.cleanup_expired_sessions()
                 return f"Cleaned up {cleaned} expired sessions"
+            
+            def quick_load_handler(selected_session_id):
+                if not selected_session_id:
+                    return [], "Default Assistant", "", self.config.default_temperature, self.config.default_max_tokens, selected_session_id, "Please select a session from the dropdown"
+                
+                history, sys_prompt, custom_prompt, temp, tokens = self.load_session(selected_session_id)
+                status = f"✅ Quick loaded session {selected_session_id} ({len(history)} messages)"
+                return history, sys_prompt, custom_prompt, temp, tokens, selected_session_id, status
             
             # Wire up session management
             load_session_btn.click(
@@ -1631,17 +1672,24 @@ class ChatInterface:
             
             list_sessions_btn.click(
                 list_sessions_handler,
-                outputs=[sessions_info]
+                outputs=[sessions_display, sessions_info, sessions_accordion, session_dropdown]
             )
             
             refresh_sessions_btn.click(
                 list_sessions_handler,
-                outputs=[sessions_info]
+                outputs=[sessions_display, sessions_info, sessions_accordion, session_dropdown]
             )
             
             cleanup_sessions_btn.click(
                 cleanup_sessions_handler,
                 outputs=[sessions_info]
+            )
+            
+            # Quick load handler
+            quick_load_btn.click(
+                quick_load_handler,
+                inputs=[session_dropdown],
+                outputs=[chatbot, system_dropdown, custom_system, temperature, max_tokens, session_id_input, context_info]
             )
         
         return interface
