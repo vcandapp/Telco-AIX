@@ -1,5 +1,5 @@
 # Telco-AIX SME Web Interface
-**🎥 Demo Video1**: [Watch on YouTube](https://youtu.be/0YJ8Ot1wvBU) <br>
+**🎥 Demo Video**: [Watch on YouTube](https://youtu.be/0YJ8Ot1wvBU) <br>
 
 ![Web UI Screenshot](webui.png)
 
