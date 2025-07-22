@@ -7,7 +7,7 @@ import gradio as gr
 import requests
 import json
 from typing import List, Tuple, Optional, Dict, Any, Generator
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import base64
 from dataclasses import dataclass
@@ -20,6 +20,18 @@ import os
 import uuid
 import pickle
 from pathlib import Path
+from collections import deque, defaultdict
+import re
+
+# Plotting imports for metrics visualization
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    PLOTTING_AVAILABLE = True
+except ImportError:
+    PLOTTING_AVAILABLE = False
+    print("⚠️ Plotly not available. Metrics will be displayed as text.")
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -221,6 +233,438 @@ class SessionManager:
         
         return cleaned
 
+class MetricsCollector:
+    """Time series metrics collector with visualization support and persistent storage"""
+    
+    def __init__(self, max_points: int = 100):
+        self.max_points = max_points
+        self.metrics_data = defaultdict(lambda: deque(maxlen=max_points))
+        self.timestamps = deque(maxlen=max_points)
+        self.pull_interval = 30  # Default 30 seconds
+        self.collection_active = False
+        self.collection_thread = None
+        self.lock = threading.Lock()
+        
+        # Archive settings
+        self.archive_dir = Path("metrics_archive")
+        self.archive_dir.mkdir(exist_ok=True)
+        self.archive_file = self.archive_dir / "metrics_data.json"
+        self.last_save_time = time.time()
+        self.save_interval = 60  # Save every 60 seconds
+        
+        # Load existing data on startup
+        self.load_archive()
+        
+        # Metric categories and their color schemes
+        self.metric_categories = {
+            'memory': {
+                'color': '#FF6B6B',  # Red
+                'patterns': [
+                    r'memory_usage_bytes',
+                    r'memory_allocated_bytes', 
+                    r'memory_cached_bytes',
+                    r'memory_free_bytes',
+                    r'gpu_memory_usage',
+                    r'process_virtual_memory_bytes',
+                    r'process_resident_memory_bytes'
+                ]
+            },
+            'transactions': {
+                'color': '#4ECDC4',  # Teal
+                'patterns': [
+                    r'http_requests_total',
+                    r'http_request_duration.*seconds',
+                    r'requests_per_second',
+                    r'response_time_seconds',
+                    r'active_requests',
+                    r'queue_size',
+                    r'http_request_size_bytes'
+                ]
+            },
+            'tokens': {
+                'color': '#45B7D1',  # Blue
+                'patterns': [
+                    r'prompt_tokens_total',
+                    r'completion_tokens_total',
+                    r'tokens_per_second',
+                    r'input_token_count',
+                    r'output_token_count',
+                    r'tokenizer_calls_total',
+                    r'vllm:prompt_tokens.*',
+                    r'vllm:generation_tokens.*',
+                    r'vllm:.*tokens.*',
+                    r'.*tokens.*'
+                ]
+            },
+            'model': {
+                'color': '#96CEB4',  # Green
+                'patterns': [
+                    r'model_load_time_seconds',
+                    r'inference_time_seconds',
+                    r'model_memory_usage',
+                    r'batch_size',
+                    r'concurrent_requests',
+                    r'vllm:request.*time.*seconds',
+                    r'vllm:.*inference.*',
+                    r'vllm:.*latency.*',
+                    r'vllm:e2e.*',
+                    r'vllm:time_.*',
+                    r'.*inference.*',
+                    r'.*latency.*',
+                    r'.*prefill.*',
+                    r'.*decode.*'
+                ]
+            }
+        }
+    
+    def parse_prometheus_metrics(self, metrics_text: str) -> Dict[str, float]:
+        """Parse Prometheus metrics format and extract current values"""
+        metrics = {}
+        
+        for line in metrics_text.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                # Parse metric line: metric_name{labels} value [timestamp]
+                parts = line.split(' ')
+                if len(parts) >= 2:
+                    metric_name_with_labels = parts[0]
+                    try:
+                        value = float(parts[1])
+                        
+                        # Extract metric name (before any '{' or ' ')
+                        metric_name = metric_name_with_labels.split('{')[0]
+                        metrics[metric_name] = value
+                    except ValueError:
+                        continue
+                        
+        return metrics
+    
+    def categorize_metric(self, metric_name: str) -> str:
+        """Categorize a metric based on its name"""
+        for category, info in self.metric_categories.items():
+            for pattern in info['patterns']:
+                if re.search(pattern, metric_name, re.IGNORECASE):
+                    return category
+        return 'other'
+    
+    def debug_categorization(self):
+        """Debug categorization of all current metrics"""
+        with self.lock:
+            categorized = {'memory': [], 'transactions': [], 'tokens': [], 'model': [], 'other': []}
+            
+            print(f"\n🔍 CATEGORIZATION DEBUG:")
+            print(f"Total metrics to categorize: {len(self.metrics_data)}")
+            
+            for metric_name in self.metrics_data.keys():
+                category = self.categorize_metric(metric_name)
+                categorized[category].append(metric_name)
+            
+            for category, metrics in categorized.items():
+                print(f"  {category.upper()}: {len(metrics)} metrics")
+                for metric in metrics[:3]:  # Show first 3 examples
+                    print(f"    - {metric}")
+                if len(metrics) > 3:
+                    print(f"    ... and {len(metrics) - 3} more")
+            
+            return categorized
+    
+    def add_metrics_data(self, metrics_text: str):
+        """Add new metrics data point"""
+        if not metrics_text:
+            return
+            
+        with self.lock:
+            timestamp = datetime.now()
+            parsed_metrics = self.parse_prometheus_metrics(metrics_text)
+            
+            self.timestamps.append(timestamp)
+            
+            for metric_name, value in parsed_metrics.items():
+                self.metrics_data[metric_name].append(value)
+    
+    def get_metrics_by_category(self, category: str) -> Dict[str, List]:
+        """Get time series data for a specific category"""
+        with self.lock:
+            category_metrics = {}
+            timestamps = list(self.timestamps)
+            
+            print(f"🔍 Looking for {category} metrics from {len(self.metrics_data)} total metrics")
+            print(f"📊 Available timestamps: {len(timestamps)}")
+            
+            for metric_name, values in self.metrics_data.items():
+                metric_category = self.categorize_metric(metric_name)
+                if metric_category == category:
+                    print(f"  ✅ Found {category} metric: {metric_name} ({len(values)} values)")
+                    category_metrics[metric_name] = {
+                        'values': list(values),
+                        'timestamps': timestamps[-len(values):] if values else timestamps[:len(values)] if timestamps else []
+                    }
+            
+            print(f"🎯 Found {len(category_metrics)} {category} metrics")
+            return category_metrics
+    
+    def create_time_series_plot(self, category: str) -> Optional[go.Figure]:
+        """Create a plotly time series plot for a category"""
+        try:
+            print(f"\n🔧 Starting plot creation for {category}")
+            
+            if not PLOTTING_AVAILABLE:
+                print(f"⚠️ Plotting not available for {category}")
+                return None
+                
+            metrics_data = self.get_metrics_by_category(category)
+            print(f"📊 Creating plot for {category}, found {len(metrics_data)} metrics")
+            
+            if not metrics_data:
+                print(f"⚠️ No metrics data for {category} - returning None")
+                return None
+                
+            fig = go.Figure()
+            print(f"✅ Created empty figure for {category}")
+            
+            category_color = self.metric_categories.get(category, {}).get('color', '#999999')
+            traces_added = 0
+            
+            for i, (metric_name, data) in enumerate(metrics_data.items()):
+                values = data['values']
+                timestamps = data['timestamps']
+                
+                print(f"  Processing {metric_name}: {len(values)} values, {len(timestamps)} timestamps")
+                
+                if values:
+                    # If we have values but no timestamps, create synthetic ones
+                    if not timestamps or len(timestamps) != len(values):
+                        base_time = datetime.now()
+                        timestamps = [base_time - timedelta(seconds=(len(values)-1-i)*30) for i in range(len(values))]
+                        print(f"  Generated {len(timestamps)} synthetic timestamps")
+                    
+                    # Use variations of the category color
+                    color_variant = self._get_color_variant(category_color, i)
+                    
+                    fig.add_trace(go.Scatter(
+                        x=timestamps,
+                        y=values,
+                        mode='lines+markers',
+                        name=metric_name,
+                        line=dict(color=color_variant, width=2),
+                        marker=dict(size=4)
+                    ))
+                    traces_added += 1
+                    print(f"  ✅ Added trace for {metric_name}")
+            
+            if traces_added == 0:
+                print(f"⚠️ No traces added to {category} plot")
+                return None
+            
+            fig.update_layout(
+                title=f'{category.title()} Metrics Over Time ({traces_added} metrics)',
+                xaxis_title='Time',
+                yaxis_title='Value',
+                hovermode='x unified',
+                template='plotly_white',
+                height=400,
+                margin=dict(l=50, r=50, t=50, b=50)
+            )
+            
+            print(f"✅ Created {category} plot with {traces_added} traces")
+            return fig
+            
+        except Exception as e:
+            print(f"❌ Error creating plot for {category}: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            return None
+    
+    def _get_color_variant(self, base_color: str, index: int) -> str:
+        """Generate color variants for multiple metrics in same category"""
+        # Simple color variation by adjusting opacity and hue
+        variants = [base_color, base_color + '80', base_color + '60', base_color + 'CC']
+        return variants[index % len(variants)]
+    
+    def set_pull_interval(self, seconds: int):
+        """Set the metrics collection interval"""
+        self.pull_interval = max(5, seconds)  # Minimum 5 seconds
+    
+    def start_collection(self, client):
+        """Start automated metrics collection"""
+        if self.collection_active:
+            return
+            
+        self.collection_active = True
+        self.collection_thread = threading.Thread(
+            target=self._collection_loop, 
+            args=(client,), 
+            daemon=True
+        )
+        self.collection_thread.start()
+    
+    def stop_collection(self):
+        """Stop automated metrics collection"""
+        self.collection_active = False
+        if self.collection_thread:
+            self.collection_thread.join(timeout=5)
+    
+    def _collection_loop(self, client):
+        """Background thread for collecting metrics"""
+        while self.collection_active:
+            try:
+                metrics_result = client.get_metrics()
+                if metrics_result.get('success'):
+                    self.add_metrics_data(metrics_result.get('data', ''))
+                    
+                    # Periodically save to archive
+                    current_time = time.time()
+                    if current_time - self.last_save_time > self.save_interval:
+                        self.save_archive()
+                        self.last_save_time = current_time
+                        
+            except Exception as e:
+                print(f"⚠️ Metrics collection error: {e}")
+                
+            time.sleep(self.pull_interval)
+        
+        # Save final state when collection stops
+        print("💾 Collection stopped, saving final archive...")
+        self.save_archive()
+    
+    def save_archive(self):
+        """Save current metrics data to persistent storage"""
+        try:
+            with self.lock:
+                # Convert deque objects to lists for JSON serialization
+                archive_data = {
+                    'metrics_data': {
+                        name: list(values) for name, values in self.metrics_data.items()
+                    },
+                    'timestamps': [ts.isoformat() for ts in self.timestamps],
+                    'last_updated': datetime.now().isoformat(),
+                    'pull_interval': self.pull_interval,
+                    'max_points': self.max_points
+                }
+                
+                # Create backup of existing archive
+                if self.archive_file.exists():
+                    backup_file = self.archive_dir / f"metrics_backup_{int(time.time())}.json"
+                    self.archive_file.rename(backup_file)
+                    
+                    # Keep only last 5 backups
+                    backups = sorted(self.archive_dir.glob("metrics_backup_*.json"))
+                    for old_backup in backups[:-5]:
+                        old_backup.unlink(missing_ok=True)
+                
+                # Save current data
+                with open(self.archive_file, 'w') as f:
+                    json.dump(archive_data, f, indent=2)
+                
+                print(f"📦 Metrics archive saved: {len(self.metrics_data)} metrics, {len(self.timestamps)} timestamps")
+                
+        except Exception as e:
+            print(f"❌ Error saving metrics archive: {str(e)}")
+    
+    def load_archive(self):
+        """Load metrics data from persistent storage"""
+        try:
+            if not self.archive_file.exists():
+                print("📦 No metrics archive found, starting fresh")
+                return
+            
+            with open(self.archive_file, 'r') as f:
+                archive_data = json.load(f)
+            
+            # Load metrics data
+            for metric_name, values in archive_data.get('metrics_data', {}).items():
+                self.metrics_data[metric_name] = deque(values, maxlen=self.max_points)
+            
+            # Load timestamps
+            timestamp_strings = archive_data.get('timestamps', [])
+            self.timestamps = deque([
+                datetime.fromisoformat(ts) for ts in timestamp_strings
+            ], maxlen=self.max_points)
+            
+            # Update settings from archive
+            self.pull_interval = archive_data.get('pull_interval', self.pull_interval)
+            
+            last_updated = archive_data.get('last_updated')
+            loaded_count = len(self.metrics_data)
+            timestamps_count = len(self.timestamps)
+            
+            print(f"✅ Metrics archive loaded: {loaded_count} metrics, {timestamps_count} timestamps")
+            if last_updated:
+                print(f"📅 Last updated: {last_updated}")
+                
+        except Exception as e:
+            print(f"❌ Error loading metrics archive: {str(e)}")
+            print("📦 Starting with empty metrics collection")
+    
+    def export_metrics(self, filename: str = None) -> str:
+        """Export metrics data to a file"""
+        try:
+            if not filename:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"metrics_export_{timestamp}.json"
+            
+            export_path = self.archive_dir / filename
+            
+            with self.lock:
+                export_data = {
+                    'exported_at': datetime.now().isoformat(),
+                    'export_version': '1.0',
+                    'metrics_count': len(self.metrics_data),
+                    'timestamps_count': len(self.timestamps),
+                    'pull_interval': self.pull_interval,
+                    'metrics_data': {
+                        name: list(values) for name, values in self.metrics_data.items()
+                    },
+                    'timestamps': [ts.isoformat() for ts in self.timestamps],
+                    'categories': list(self.metric_categories.keys())
+                }
+            
+            with open(export_path, 'w') as f:
+                json.dump(export_data, f, indent=2)
+            
+            return f"✅ Metrics exported to {export_path}"
+            
+        except Exception as e:
+            return f"❌ Export failed: {str(e)}"
+    
+    def import_metrics(self, filename: str) -> str:
+        """Import metrics data from a file"""
+        try:
+            import_path = self.archive_dir / filename
+            
+            if not import_path.exists():
+                return f"❌ File not found: {filename}"
+            
+            with open(import_path, 'r') as f:
+                import_data = json.load(f)
+            
+            # Merge with existing data
+            with self.lock:
+                for metric_name, values in import_data.get('metrics_data', {}).items():
+                    # Merge values, keeping newest points
+                    existing_values = list(self.metrics_data[metric_name])
+                    combined_values = existing_values + values
+                    self.metrics_data[metric_name] = deque(combined_values[-self.max_points:], maxlen=self.max_points)
+                
+                # Merge timestamps
+                import_timestamps = [
+                    datetime.fromisoformat(ts) for ts in import_data.get('timestamps', [])
+                ]
+                existing_timestamps = list(self.timestamps)
+                combined_timestamps = existing_timestamps + import_timestamps
+                # Sort by time and take most recent points
+                combined_timestamps.sort()
+                self.timestamps = deque(combined_timestamps[-self.max_points:], maxlen=self.max_points)
+            
+            # Save merged data
+            self.save_archive()
+            
+            imported_count = len(import_data.get('metrics_data', {}))
+            return f"✅ Imported {imported_count} metrics from {filename}"
+            
+        except Exception as e:
+            return f"❌ Import failed: {str(e)}"
+
 class StreamingResponse:
     """Handle streaming response accumulation"""
     def __init__(self):
@@ -380,6 +824,57 @@ class ChatClient:
             results['streaming_test'] = {'success': False, 'error': str(e)}
         
         return results
+    
+    def get_version_info(self) -> Dict[str, Any]:
+        """Get API version information"""
+        try:
+            response = self.session.get(
+                f"{self.config.api_endpoint}/version", 
+                timeout=5  # Short timeout for management endpoints
+            )
+            if response.status_code == 200:
+                return {
+                    'success': True,
+                    'data': response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text
+                }
+            else:
+                return {'success': False, 'status': response.status_code, 'error': response.text}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get server metrics"""
+        try:
+            response = self.session.get(
+                f"{self.config.api_endpoint}/metrics", 
+                timeout=5  # Short timeout for management endpoints
+            )
+            if response.status_code == 200:
+                return {
+                    'success': True,
+                    'data': response.text  # Metrics are usually in Prometheus format
+                }
+            else:
+                return {'success': False, 'status': response.status_code, 'error': response.text}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def get_openapi_spec(self) -> Dict[str, Any]:
+        """Get OpenAPI specification"""
+        try:
+            response = self.session.get(
+                f"{self.config.api_endpoint}/openapi.json", 
+                timeout=5  # Short timeout for management endpoints
+            )
+            if response.status_code == 200:
+                return {
+                    'success': True,
+                    'data': response.json()
+                }
+            else:
+                return {'success': False, 'status': response.status_code, 'error': response.text}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     def _estimate_context_size(self, messages: List[Dict[str, str]]) -> int:
         """Estimate total context size in characters"""
@@ -687,6 +1182,7 @@ class ChatInterface:
         self.system_prompts = SYSTEM_PROMPTS.copy()  # Keep a local copy
         self._processing = False  # Flag to prevent double processing
         self.session_manager = SessionManager()  # Add session management
+        self.metrics_collector = MetricsCollector()  # Add metrics collection
     
     def process_message(
         self,
@@ -1028,6 +1524,297 @@ class ChatInterface:
         
         return prompt_name, self.system_prompts[prompt_name]
     
+    def get_management_overview(self) -> str:
+        """Get comprehensive management overview"""
+        overview = "# 🎛️ Model Serving Management\n"
+        overview += f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        
+        try:
+            # Get all available information with error handling
+            health_result = self.client.test_connection()
+        except Exception as e:
+            health_result = {'error': str(e)}
+            
+        try:
+            version_info = self.client.get_version_info()
+        except Exception as e:
+            version_info = {'success': False, 'error': str(e)}
+            
+        try:
+            metrics_info = self.client.get_metrics()
+        except Exception as e:
+            metrics_info = {'success': False, 'error': str(e)}
+        
+        # Model Information Section
+        overview += "## 📊 Model Information\n"
+        models_data = health_result.get('models', {})
+        if models_data.get('success'):
+            overview += f"**Status:** 🟢 Online\n"
+            overview += f"**Available Models:** {', '.join(models_data.get('available', []))}\n"
+            overview += f"**Active Model:** {models_data.get('configured', 'Unknown')}\n"
+        else:
+            overview += "**Status:** 🔴 Offline or Unavailable\n"
+        
+        # Server Health Section
+        overview += "\n## 🏥 Server Health\n"
+        health_data = health_result.get('health', {})
+        if health_data.get('success'):
+            overview += f"**Health Status:** ✅ Healthy\n"
+            overview += f"**Response Time:** {health_data.get('latency', 0)*1000:.0f}ms\n"
+        else:
+            overview += f"**Health Status:** ❌ Unhealthy\n"
+            overview += f"**Error:** {health_data.get('error', 'Unknown')}\n"
+        
+        # API Version Section
+        overview += "\n## 🔧 API Version\n"
+        if version_info.get('success'):
+            version_data = version_info.get('data', {})
+            if isinstance(version_data, dict):
+                overview += f"**Version:** {version_data.get('version', 'Unknown')}\n"
+                for key, value in version_data.items():
+                    if key != 'version':
+                        overview += f"**{key.title()}:** {value}\n"
+            else:
+                overview += f"**Version Info:** {str(version_data)[:100]}...\n"
+        else:
+            overview += "**Version:** Unable to retrieve\n"
+        
+        # Performance Metrics Summary
+        overview += "\n## 📈 Performance Summary\n"
+        chat_test = health_result.get('chat_test', {})
+        streaming_test = health_result.get('streaming_test', {})
+        
+        if chat_test.get('success'):
+            overview += f"**Chat API Latency:** {chat_test.get('latency', 0)*1000:.0f}ms\n"
+        else:
+            overview += "**Chat API:** ❌ Not responding\n"
+            
+        if streaming_test.get('success'):
+            overview += f"**Streaming Latency:** {streaming_test.get('latency', 0)*1000:.0f}ms\n"
+        else:
+            overview += "**Streaming:** ❌ Not available\n"
+        
+        # Configuration Summary
+        overview += "\n## ⚙️ Configuration\n"
+        overview += f"**API Endpoint:** `{self.config.api_endpoint}`\n"
+        overview += f"**Default Temperature:** {self.config.default_temperature}\n"
+        overview += f"**Default Max Tokens:** {self.config.default_max_tokens}\n"
+        overview += f"**Auto-Stream Threshold:** {self.config.auto_stream_threshold} chars\n"
+        
+        return overview
+    
+    def get_detailed_metrics(self) -> str:
+        """Get detailed metrics in formatted view (fallback for text display)"""
+        metrics_result = self.client.get_metrics()
+        
+        if not metrics_result.get('success'):
+            return f"## ❌ Metrics Unavailable\n\nError: {metrics_result.get('error', 'Unknown error')}"
+        
+        # Add new metrics data to collector
+        raw_metrics = metrics_result.get('data', '')
+        self.metrics_collector.add_metrics_data(raw_metrics)
+        
+        # Return summary instead of full dump
+        metrics_text = "## 📊 Metrics Summary\n\n"
+        
+        if raw_metrics:
+            parsed = self.metrics_collector.parse_prometheus_metrics(raw_metrics)
+            if parsed:
+                categories = defaultdict(list)
+                for metric_name in parsed.keys():
+                    category = self.metrics_collector.categorize_metric(metric_name)
+                    categories[category].append(metric_name)
+                
+                for category, metrics in categories.items():
+                    if metrics:
+                        metrics_text += f"### {category.title()} ({len(metrics)} metrics)\n"
+                        for metric in sorted(metrics)[:5]:  # Show first 5 per category
+                            value = parsed.get(metric, 0)
+                            metrics_text += f"- `{metric}`: {value}\n"
+                        if len(metrics) > 5:
+                            metrics_text += f"- ... and {len(metrics) - 5} more\n"
+                        metrics_text += "\n"
+        else:
+            metrics_text += "No metrics data available.\n"
+        
+        return metrics_text
+    
+    def generate_sample_metrics(self) -> str:
+        """Generate sample metrics data for testing when real endpoint is unavailable"""
+        import random
+        timestamp = datetime.now()
+        
+        sample_metrics = f"""# HELP memory_usage_bytes Current memory usage in bytes
+# TYPE memory_usage_bytes gauge
+memory_usage_bytes {random.randint(1000000, 5000000)}
+
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total {random.randint(100, 1000)}
+
+# HELP http_request_duration_seconds HTTP request duration
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds {random.uniform(0.1, 2.0)}
+
+# HELP prompt_tokens_total Total prompt tokens processed
+# TYPE prompt_tokens_total counter
+prompt_tokens_total {random.randint(10000, 100000)}
+
+# HELP completion_tokens_total Total completion tokens generated
+# TYPE completion_tokens_total counter
+completion_tokens_total {random.randint(5000, 50000)}
+
+# HELP inference_time_seconds Model inference time
+# TYPE inference_time_seconds gauge
+inference_time_seconds {random.uniform(0.05, 1.5)}
+
+# HELP gpu_memory_usage GPU memory usage in bytes
+# TYPE gpu_memory_usage gauge
+gpu_memory_usage {random.randint(500000, 8000000)}
+
+# HELP active_requests Currently active requests
+# TYPE active_requests gauge
+active_requests {random.randint(0, 50)}
+
+# HELP tokens_per_second Token processing rate
+# TYPE tokens_per_second gauge
+tokens_per_second {random.uniform(10.0, 100.0)}
+
+# HELP model_memory_usage Model memory usage in bytes
+# TYPE model_memory_usage gauge
+model_memory_usage {random.randint(1000000, 10000000)}
+"""
+        return sample_metrics
+
+    def get_metrics_plots(self) -> Dict[str, Any]:
+        """Get plotly figures for each metric category"""
+        try:
+            print("🔍 Starting plot generation...")
+            plots = {}
+            
+            if not PLOTTING_AVAILABLE:
+                error_msg = "Plotting not available. Install plotly to enable visual metrics."
+                print(f"❌ {error_msg}")
+                return {"error": error_msg}
+            
+            print("✅ Plotly is available")
+            categories = ['memory', 'transactions', 'tokens', 'model']
+            
+            # Check if we have any data at all
+            total_metrics = len(self.metrics_collector.metrics_data)
+            total_timestamps = len(self.metrics_collector.timestamps)
+            
+            print(f"📊 Data check: {total_metrics} metrics, {total_timestamps} timestamps")
+            
+            has_data = total_metrics > 0 and total_timestamps > 0
+            print(f"📊 Has existing data: {has_data}")
+            
+            if not has_data:
+                print("🎲 Generating sample data...")
+                # Add sample data for demonstration
+                sample_data = self.generate_sample_metrics()
+                self.metrics_collector.add_metrics_data(sample_data)
+                print("✅ Sample data added")
+            
+            for category in categories:
+                print(f"\n🔧 Processing {category} category...")
+                try:
+                    # First check if we have data for this category
+                    cat_data = self.metrics_collector.get_metrics_by_category(category)
+                    print(f"📊 Found {len(cat_data)} {category} metrics")
+                    
+                    fig = self.metrics_collector.create_time_series_plot(category)
+                    if fig:
+                        plots[category] = fig
+                        print(f"✅ {category} plot created successfully")
+                    else:
+                        print(f"⚠️ create_time_series_plot returned None for {category}")
+                        print(f"    Data check: {len(cat_data)} metrics available")
+                        # Create empty placeholder plot
+                        fig = go.Figure()
+                        message = f"No {category} metrics available yet.<br>Start collection to see data."
+                        if cat_data:
+                            message = f"Found {len(cat_data)} {category} metrics but plot failed.<br>Check debug information."
+                        
+                        fig.add_annotation(
+                            text=message,
+                            xref="paper", yref="paper",
+                            x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                            showarrow=False,
+                            font=dict(size=16, color="gray")
+                        )
+                        fig.update_layout(
+                            title=f'{category.title()} Metrics',
+                            xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+                            yaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+                            height=400
+                        )
+                        plots[category] = fig
+                        print(f"✅ {category} placeholder created")
+                except Exception as category_error:
+                    print(f"❌ Error creating {category} plot: {str(category_error)}")
+                    plots[category] = None
+            
+            print(f"🎉 Plot generation complete. Created {len([p for p in plots.values() if p is not None])} plots")
+            return plots
+            
+        except Exception as e:
+            error_msg = f"Critical error in plot generation: {str(e)}"
+            print(f"💥 {error_msg}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            return {"error": error_msg}
+    
+    def get_api_capabilities(self) -> str:
+        """Get API capabilities from OpenAPI spec"""
+        spec_result = self.client.get_openapi_spec()
+        
+        if not spec_result.get('success'):
+            return f"## ❌ API Specification Unavailable\n\nError: {spec_result.get('error', 'Unknown error')}"
+        
+        spec = spec_result.get('data', {})
+        capabilities = "## 🚀 API Capabilities\n\n"
+        
+        # Extract basic info
+        info = spec.get('info', {})
+        if info:
+            capabilities += f"**API Title:** {info.get('title', 'Unknown')}\n"
+            capabilities += f"**API Version:** {info.get('version', 'Unknown')}\n\n"
+        
+        # Extract available endpoints
+        paths = spec.get('paths', {})
+        if paths:
+            capabilities += "### Available Endpoints:\n"
+            
+            # Group endpoints by category
+            categorized = {
+                'Core': [],
+                'Models': [],
+                'Health': [],
+                'Utilities': [],
+                'Other': []
+            }
+            
+            for path, methods in paths.items():
+                if '/v1/' in path:
+                    categorized['Core'].append(path)
+                elif 'model' in path.lower():
+                    categorized['Models'].append(path)
+                elif any(x in path.lower() for x in ['health', 'ping', 'metrics']):
+                    categorized['Health'].append(path)
+                elif any(x in path.lower() for x in ['tokenize', 'version', 'docs']):
+                    categorized['Utilities'].append(path)
+                else:
+                    categorized['Other'].append(path)
+            
+            for category, endpoints in categorized.items():
+                if endpoints:
+                    capabilities += f"\n**{category}:**\n"
+                    for endpoint in sorted(endpoints):
+                        capabilities += f"- `{endpoint}`\n"
+        
+        return capabilities
+    
     def run_diagnostics(self) -> str:
         """Run comprehensive diagnostics"""
         print("🔍 Running enhanced diagnostics...")
@@ -1198,6 +1985,33 @@ class ChatInterface:
             display: none !important;
         }
         
+        /* Metrics tab styling */
+        .metrics-tab {
+            padding: 10px;
+        }
+        
+        /* Plot containers */
+        .plot-container {
+            margin: 10px 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        /* Metrics controls styling */
+        .metrics-controls {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        /* Color coding for metric categories */
+        .memory-metrics { border-left: 4px solid #FF6B6B; }
+        .transaction-metrics { border-left: 4px solid #4ECDC4; }
+        .token-metrics { border-left: 4px solid #45B7D1; }
+        .model-metrics { border-left: 4px solid #96CEB4; }
+        
         /* Limit progress bars to single instance */
         .gradio-container .wrap:has(.progress-bar) .progress-bar ~ .progress-bar {
             display: none !important;
@@ -1356,21 +2170,138 @@ class ChatInterface:
                             )
                 
                 # Additional tabs for better organization
-                with gr.TabItem("🔧 Diagnostics"):
+                with gr.TabItem("🎛️ Management"):
                     with gr.Row():
-                        with gr.Column():
-                            gr.Markdown("### System Diagnostics")
+                        with gr.Column(scale=2):
+                            # Overview section with auto-refresh
+                            gr.Markdown("### 📊 Model Serving Overview")
                             with gr.Row():
-                                diagnostics_btn = gr.Button("🔍 Run Diagnostics", variant="secondary")
-                                test_btn = gr.Button("🧪 Test Streaming", variant="secondary")
-                                ui_test_btn = gr.Button("🎯 Test UI Update", variant="secondary")
+                                refresh_overview_btn = gr.Button("🔄 Refresh Overview", variant="primary")
+                                auto_refresh_checkbox = gr.Checkbox(label="Auto-refresh (30s)", value=False)
                             
-                            diagnostics_output = gr.Textbox(
-                                label="📊 Diagnostics Report",
-                                lines=20,
-                                max_lines=30,
-                                value="Click 'Run Diagnostics' to test the connection..."
+                            management_overview = gr.Markdown(
+                                value="Click 'Refresh Overview' to load current status...",
+                                elem_id="management-overview"
                             )
+                            
+                        with gr.Column(scale=1):
+                            gr.Markdown("### 🛠️ Quick Actions")
+                            diagnostics_btn = gr.Button("🔍 Run Full Diagnostics", variant="secondary", size="sm")
+                            test_streaming_btn = gr.Button("🧪 Test Streaming", variant="secondary", size="sm")
+                            test_ui_btn = gr.Button("🎯 Test UI Update", variant="secondary", size="sm")
+                            
+                            gr.Markdown("### 📝 Status")
+                            last_update_display = gr.Textbox(
+                                label="Last Update",
+                                value="Not updated yet",
+                                interactive=False,
+                                max_lines=1
+                            )
+                    
+                    with gr.Row():
+                        # Tabbed sections for detailed information
+                        with gr.Tabs():
+                            with gr.TabItem("📊 Metrics"):
+                                with gr.Row():
+                                    with gr.Column(scale=3):
+                                        # Metrics controls
+                                        with gr.Row():
+                                            start_collection_btn = gr.Button("▶️ Start Collection", variant="primary", size="sm")
+                                            stop_collection_btn = gr.Button("⏸️ Stop Collection", variant="secondary", size="sm")
+                                            sample_data_btn = gr.Button("🎲 Generate Sample Data", variant="secondary", size="sm")
+                                            debug_btn = gr.Button("🔧 Debug Info", variant="secondary", size="sm")
+                                            test_plots_btn = gr.Button("🧪 Test Plots", variant="secondary", size="sm")
+                                            refresh_plots_btn = gr.Button("🔄 Refresh Plots", variant="primary", size="sm")
+                                            force_plots_btn = gr.Button("💪 Force Plots", variant="primary", size="sm")
+                                            
+                                        with gr.Row():
+                                            pull_interval_slider = gr.Slider(
+                                                minimum=5,
+                                                maximum=300,
+                                                value=30,
+                                                step=5,
+                                                label="Pull Interval (seconds)",
+                                                interactive=True
+                                            )
+                                        
+                                        collection_status = gr.Textbox(
+                                            label="Collection Status",
+                                            value="Not started",
+                                            interactive=False,
+                                            max_lines=1
+                                        )
+                                
+                                # Visual metrics plots organized by category
+                                with gr.Row():
+                                    with gr.Tabs():
+                                        with gr.TabItem("🧠 Memory", elem_classes="metrics-tab"):
+                                            memory_plot = gr.Plot(
+                                                label="Memory Metrics Over Time"
+                                            )
+                                        
+                                        with gr.TabItem("🔄 Transactions", elem_classes="metrics-tab"):
+                                            transactions_plot = gr.Plot(
+                                                label="Transaction Metrics Over Time"
+                                            )
+                                        
+                                        with gr.TabItem("🎯 Tokens", elem_classes="metrics-tab"):
+                                            tokens_plot = gr.Plot(
+                                                label="Token Metrics Over Time"
+                                            )
+                                        
+                                        with gr.TabItem("⚙️ Model", elem_classes="metrics-tab"):
+                                            model_plot = gr.Plot(
+                                                label="Model Performance Metrics Over Time"
+                                            )
+                                
+                                # Archive management section
+                                with gr.Accordion("💾 Data Archive", open=False):
+                                    with gr.Row():
+                                        export_btn = gr.Button("📤 Export Data", variant="secondary", size="sm")
+                                        import_btn = gr.Button("📥 Import Data", variant="secondary", size="sm")
+                                        clear_archive_btn = gr.Button("🗑️ Clear Archive", variant="stop", size="sm")
+                                    
+                                    with gr.Row():
+                                        export_filename = gr.Textbox(
+                                            label="Export Filename (optional)",
+                                            placeholder="metrics_export_custom.json",
+                                            scale=2
+                                        )
+                                        import_file_dropdown = gr.Dropdown(
+                                            label="Import File",
+                                            choices=[],
+                                            scale=2,
+                                            interactive=True
+                                        )
+                                        refresh_files_btn = gr.Button("🔄", size="sm", scale=1)
+                                    
+                                    archive_status = gr.Textbox(
+                                        label="Archive Status",
+                                        value="Archive operations will show status here...",
+                                        interactive=False,
+                                        lines=2
+                                    )
+                                
+                                # Fallback text display
+                                with gr.Accordion("📋 Text Summary", open=False):
+                                    metrics_output = gr.Markdown(
+                                        value="Metrics summary will appear here after collection starts...",
+                                        elem_id="metrics-display"
+                                    )
+                            
+                            with gr.TabItem("🚀 API Capabilities"):
+                                capabilities_output = gr.Markdown(
+                                    value="API capabilities will appear here after refresh...",
+                                    elem_id="capabilities-display"
+                                )
+                            
+                            with gr.TabItem("🔍 Diagnostics Log"):
+                                diagnostics_output = gr.Textbox(
+                                    label="📊 Diagnostics Report",
+                                    lines=15,
+                                    max_lines=25,
+                                    value="Click 'Run Full Diagnostics' to test all endpoints..."
+                                )
                 
                 with gr.TabItem("📂 Sessions"):
                     with gr.Row():
@@ -1486,18 +2417,534 @@ class ChatInterface:
                 outputs=[context_info, param_status]
             )
             
+            # Management tab handlers
+            def refresh_management_overview():
+                """Refresh all management information"""
+                try:
+                    overview = self.get_management_overview()
+                except Exception as e:
+                    overview = f"# ❌ Error Loading Overview\n\n{str(e)}"
+                
+                try:
+                    metrics = self.get_detailed_metrics()
+                except Exception as e:
+                    metrics = f"## ❌ Error Loading Metrics\n\n{str(e)}"
+                
+                try:
+                    capabilities = self.get_api_capabilities()
+                except Exception as e:
+                    capabilities = f"## ❌ Error Loading Capabilities\n\n{str(e)}"
+                
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                return overview, metrics, capabilities, timestamp
+            
+            # Metrics collection handlers
+            def start_metrics_collection(interval):
+                """Start metrics collection with specified interval"""
+                try:
+                    self.metrics_collector.set_pull_interval(int(interval))
+                    self.metrics_collector.start_collection(self.client)
+                    return "✅ Collection started"
+                except Exception as e:
+                    return f"❌ Error starting collection: {str(e)}"
+            
+            def stop_metrics_collection():
+                """Stop metrics collection"""
+                try:
+                    self.metrics_collector.stop_collection()
+                    return "⏸️ Collection stopped"
+                except Exception as e:
+                    return f"❌ Error stopping collection: {str(e)}"
+            
+            def update_pull_interval(interval):
+                """Update the pull interval for metrics collection"""
+                try:
+                    self.metrics_collector.set_pull_interval(int(interval))
+                    return f"⏱️ Interval updated to {interval}s"
+                except Exception as e:
+                    return f"❌ Error updating interval: {str(e)}"
+            
+            def refresh_metrics_plots():
+                """Refresh all metrics plots"""
+                try:
+                    print("🔄 Refreshing metrics plots...")
+                    plots = self.get_metrics_plots()
+                    
+                    if "error" in plots:
+                        error_msg = plots["error"]
+                        print(f"❌ Plot error: {error_msg}")
+                        return None, None, None, None, error_msg
+                    
+                    print(f"📊 Retrieved plots: {list(plots.keys())}")
+                    
+                    memory_fig = plots.get('memory')
+                    transactions_fig = plots.get('transactions')
+                    tokens_fig = plots.get('tokens')
+                    model_fig = plots.get('model')
+                    
+                    print(f"🧠 Memory plot: {'✅ Present' if memory_fig else '❌ None'}")
+                    print(f"🔄 Transactions plot: {'✅ Present' if transactions_fig else '❌ None'}")
+                    print(f"🎯 Tokens plot: {'✅ Present' if tokens_fig else '❌ None'}")
+                    print(f"⚙️ Model plot: {'✅ Present' if model_fig else '❌ None'}")
+                    
+                    metrics_summary = self.get_detailed_metrics()
+                    
+                    return (
+                        memory_fig,
+                        transactions_fig, 
+                        tokens_fig,
+                        model_fig,
+                        metrics_summary
+                    )
+                except Exception as e:
+                    print(f"💥 Error in refresh_metrics_plots: {str(e)}")
+                    import traceback
+                    print(f"Traceback: {traceback.format_exc()}")
+                    return None, None, None, None, f"Error refreshing plots: {str(e)}"
+            
+            def generate_sample_data():
+                """Generate and add sample metrics data"""
+                try:
+                    print("🎲 Generating sample data...")
+                    sample_data = self.generate_sample_metrics()
+                    self.metrics_collector.add_metrics_data(sample_data)
+                    
+                    # Get updated plots
+                    plots = self.get_metrics_plots()
+                    
+                    if "error" in plots:
+                        error_msg = plots["error"]
+                        print(f"❌ Plot error: {error_msg}")
+                        
+                        # Create simple text-based fallback
+                        fallback_msg = f"📊 Sample data added (Text mode)\n\n{error_msg}"
+                        return None, None, None, None, fallback_msg, self.get_detailed_metrics()
+                    
+                    print("✅ Sample data and plots generated successfully")
+                    return (
+                        plots.get('memory'),
+                        plots.get('transactions'), 
+                        plots.get('tokens'),
+                        plots.get('model'),
+                        "📊 Sample data generated successfully",
+                        self.get_detailed_metrics()
+                    )
+                except Exception as e:
+                    print(f"💥 Critical error: {str(e)}")
+                    import traceback
+                    print(f"Traceback: {traceback.format_exc()}")
+                    return None, None, None, None, f"❌ Error generating sample data: {str(e)}", str(e)
+            
+            def force_create_plots():
+                """Force create plots from any available metrics data"""
+                try:
+                    if not PLOTTING_AVAILABLE:
+                        return None, None, None, None, "❌ Plotly not available"
+                    
+                    import plotly.graph_objects as go
+                    
+                    # Get all metrics regardless of category
+                    all_metrics = dict(self.metrics_collector.metrics_data)
+                    timestamps = list(self.metrics_collector.timestamps)
+                    
+                    if not all_metrics:
+                        return None, None, None, None, "❌ No metrics data found"
+                    
+                    # Split metrics into 4 groups for the 4 plot areas
+                    metric_names = list(all_metrics.keys())
+                    
+                    # Create 4 figures with whatever metrics we have
+                    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']  # Red, Teal, Blue, Green
+                    titles = ['Memory', 'Transactions', 'Tokens', 'Model']
+                    
+                    figures = []
+                    
+                    for i in range(4):
+                        fig = go.Figure()
+                        
+                        # Take every 4th metric starting from i
+                        group_metrics = metric_names[i::4]
+                        
+                        for j, metric_name in enumerate(group_metrics[:5]):  # Max 5 per plot
+                            values = list(all_metrics[metric_name])
+                            if values:
+                                # Create timestamps if needed
+                                if len(timestamps) != len(values):
+                                    base_time = datetime.now()
+                                    plot_timestamps = [base_time - timedelta(seconds=(len(values)-1-k)*30) for k in range(len(values))]
+                                else:
+                                    plot_timestamps = timestamps[-len(values):]
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=plot_timestamps,
+                                    y=values,
+                                    mode='lines+markers',
+                                    name=metric_name,
+                                    line=dict(color=colors[i], width=2),
+                                    marker=dict(size=4)
+                                ))
+                        
+                        fig.update_layout(
+                            title=f'{titles[i]} Metrics ({len(group_metrics)} total)',
+                            xaxis_title='Time',
+                            yaxis_title='Value',
+                            height=400
+                        )
+                        
+                        figures.append(fig if fig.data else None)
+                    
+                    return figures[0], figures[1], figures[2], figures[3], f"✅ Created plots from {len(all_metrics)} metrics"
+                    
+                except Exception as e:
+                    print(f"❌ Force create error: {str(e)}")
+                    return None, None, None, None, f"❌ Error: {str(e)}"
+            
+            def debug_info():
+                """Get debug information about the plotting system"""
+                try:
+                    debug_msg = "🔧 Debug Information\n\n"
+                    
+                    # Check Plotly availability
+                    debug_msg += f"**Plotly Available:** {PLOTTING_AVAILABLE}\n"
+                    
+                    if PLOTTING_AVAILABLE:
+                        try:
+                            import plotly
+                            debug_msg += f"**Plotly Version:** {plotly.__version__}\n"
+                        except:
+                            debug_msg += "**Plotly Version:** Could not determine\n"
+                    
+                    # Check metrics data
+                    total_metrics = len(self.metrics_collector.metrics_data)
+                    debug_msg += f"**Total Metrics Collected:** {total_metrics}\n"
+                    debug_msg += f"**Timestamps Available:** {len(self.metrics_collector.timestamps)}\n"
+                    
+                    # Show actual metric names that were collected
+                    debug_msg += "\n**📊 Collected Metric Names:**\n"
+                    metric_names = list(self.metrics_collector.metrics_data.keys())
+                    for i, name in enumerate(metric_names[:20]):  # Show first 20
+                        category = self.metrics_collector.categorize_metric(name)
+                        debug_msg += f"- `{name}` → {category}\n"
+                    if len(metric_names) > 20:
+                        debug_msg += f"- ... and {len(metric_names) - 20} more\n"
+                    
+                    # Check categories
+                    debug_msg += "\n**📈 Category Breakdown:**\n"
+                    for category in ['memory', 'transactions', 'tokens', 'model']:
+                        cat_data = self.metrics_collector.get_metrics_by_category(category)
+                        debug_msg += f"**{category.title()}:** {len(cat_data)} metrics\n"
+                        for metric_name in list(cat_data.keys())[:3]:  # Show first 3 per category
+                            debug_msg += f"  - {metric_name}\n"
+                    
+                    # Count uncategorized metrics
+                    uncategorized_count = 0
+                    uncategorized_names = []
+                    for name in metric_names:
+                        if self.metrics_collector.categorize_metric(name) == 'other':
+                            uncategorized_count += 1
+                            if len(uncategorized_names) < 5:
+                                uncategorized_names.append(name)
+                    
+                    debug_msg += f"\n**❓ Uncategorized:** {uncategorized_count} metrics\n"
+                    for name in uncategorized_names:
+                        debug_msg += f"  - {name}\n"
+                    
+                    # Try creating a simple plot
+                    if PLOTTING_AVAILABLE:
+                        try:
+                            import plotly.graph_objects as go
+                            test_fig = go.Figure()
+                            test_fig.add_trace(go.Scatter(x=[1, 2, 3], y=[1, 4, 2], name='Test'))
+                            debug_msg += "\n**Test Plot Creation:** ✅ Success\n"
+                        except Exception as plot_error:
+                            debug_msg += f"\n**Test Plot Creation:** ❌ Failed - {str(plot_error)}\n"
+                    
+                    # Add detailed plot debugging
+                    debug_msg += "\n\n**🎯 PLOT DEBUGGING:**\n"
+                    try:
+                        for category in ['memory', 'transactions', 'tokens', 'model']:
+                            debug_msg += f"\n**{category.title()} Plot Debug:**\n"
+                            cat_data = self.metrics_collector.get_metrics_by_category(category)
+                            debug_msg += f"  - Found {len(cat_data)} categorized metrics\n"
+                            if cat_data:
+                                for metric_name, data in list(cat_data.items())[:2]:  # Show first 2
+                                    values = data.get('values', [])
+                                    timestamps = data.get('timestamps', [])
+                                    debug_msg += f"  - {metric_name}: {len(values)} values, {len(timestamps)} timestamps\n"
+                                
+                                # Try creating the plot
+                                try:
+                                    fig = self.metrics_collector.create_time_series_plot(category)
+                                    if fig:
+                                        debug_msg += f"  - Plot creation: ✅ SUCCESS\n"
+                                    else:
+                                        debug_msg += f"  - Plot creation: ❌ RETURNED NONE\n"
+                                except Exception as plot_err:
+                                    debug_msg += f"  - Plot creation: ❌ ERROR: {str(plot_err)}\n"
+                            else:
+                                debug_msg += f"  - No categorized data found\n"
+                    except Exception as plot_debug_err:
+                        debug_msg += f"❌ Plot debug error: {str(plot_debug_err)}\n"
+                    
+                    return debug_msg
+                    
+                except Exception as e:
+                    return f"❌ Debug error: {str(e)}"
+            
+            # Archive management handlers
+            def export_data(filename):
+                """Export metrics data"""
+                try:
+                    result = self.metrics_collector.export_metrics(filename if filename.strip() else None)
+                    return result
+                except Exception as e:
+                    return f"❌ Export error: {str(e)}"
+            
+            def import_data(selected_file):
+                """Import metrics data"""
+                try:
+                    if not selected_file:
+                        return "❌ Please select a file to import"
+                    result = self.metrics_collector.import_metrics(selected_file)
+                    # Refresh plots after import
+                    plots = self.get_metrics_plots()
+                    return result
+                except Exception as e:
+                    return f"❌ Import error: {str(e)}"
+            
+            def clear_archive():
+                """Clear archived data"""
+                try:
+                    with self.metrics_collector.lock:
+                        self.metrics_collector.metrics_data.clear()
+                        self.metrics_collector.timestamps.clear()
+                    
+                    # Remove archive file
+                    if self.metrics_collector.archive_file.exists():
+                        self.metrics_collector.archive_file.unlink()
+                    
+                    return "✅ Archive cleared successfully"
+                except Exception as e:
+                    return f"❌ Clear error: {str(e)}"
+            
+            def refresh_import_files():
+                """Refresh list of available import files"""
+                try:
+                    archive_dir = self.metrics_collector.archive_dir
+                    json_files = []
+                    
+                    if archive_dir.exists():
+                        # Get all JSON files in archive directory
+                        for file_path in archive_dir.glob("*.json"):
+                            if file_path.name != "metrics_data.json":  # Skip current archive
+                                json_files.append(file_path.name)
+                    
+                    return gr.update(choices=sorted(json_files))
+                except Exception as e:
+                    print(f"❌ Error refreshing files: {str(e)}")
+                    return gr.update(choices=[])
+            
+            def test_simple_plot():
+                """Create a simple test plot to verify Gradio Plot component works"""
+                try:
+                    if not PLOTTING_AVAILABLE:
+                        return None, None, None, None, "❌ Plotly not available"
+                    
+                    # Create very simple test plots
+                    import plotly.graph_objects as go
+                    import random
+                    
+                    # Simple test data
+                    x = list(range(10))
+                    
+                    # Memory test plot (red)
+                    memory_fig = go.Figure()
+                    memory_fig.add_trace(go.Scatter(x=x, y=[random.randint(1000, 5000) for _ in range(10)], 
+                                                   mode='lines+markers', name='memory_test',
+                                                   line=dict(color='#FF6B6B', width=2)))
+                    memory_fig.update_layout(title='Memory Test', height=300)
+                    
+                    # Transaction test plot (teal)  
+                    trans_fig = go.Figure()
+                    trans_fig.add_trace(go.Scatter(x=x, y=[random.randint(100, 1000) for _ in range(10)],
+                                                  mode='lines+markers', name='requests_test',
+                                                  line=dict(color='#4ECDC4', width=2)))
+                    trans_fig.update_layout(title='Transaction Test', height=300)
+                    
+                    # Token test plot (blue)
+                    token_fig = go.Figure()
+                    token_fig.add_trace(go.Scatter(x=x, y=[random.randint(1000, 10000) for _ in range(10)],
+                                                  mode='lines+markers', name='tokens_test', 
+                                                  line=dict(color='#45B7D1', width=2)))
+                    token_fig.update_layout(title='Token Test', height=300)
+                    
+                    # Model test plot (green)
+                    model_fig = go.Figure()
+                    model_fig.add_trace(go.Scatter(x=x, y=[random.uniform(0.1, 2.0) for _ in range(10)],
+                                                  mode='lines+markers', name='inference_test',
+                                                  line=dict(color='#96CEB4', width=2)))
+                    model_fig.update_layout(title='Model Test', height=300)
+                    
+                    return memory_fig, trans_fig, token_fig, model_fig, "✅ Simple test plots created"
+                    
+                except Exception as e:
+                    print(f"❌ Test plot error: {str(e)}")
+                    import traceback
+                    print(f"Traceback: {traceback.format_exc()}")
+                    return None, None, None, None, f"❌ Test plot failed: {str(e)}"
+            
+            refresh_overview_btn.click(
+                refresh_management_overview,
+                outputs=[management_overview, metrics_output, capabilities_output, last_update_display]
+            )
+            
+            # Wire up metrics collection controls
+            start_collection_btn.click(
+                start_metrics_collection,
+                inputs=[pull_interval_slider],
+                outputs=[collection_status]
+            )
+            
+            stop_collection_btn.click(
+                stop_metrics_collection,
+                outputs=[collection_status]
+            )
+            
+            pull_interval_slider.change(
+                update_pull_interval,
+                inputs=[pull_interval_slider],
+                outputs=[collection_status]
+            )
+            
+            # Sample data generation
+            sample_data_btn.click(
+                generate_sample_data,
+                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, collection_status, metrics_output]
+            )
+            
+            # Debug information
+            debug_btn.click(
+                debug_info,
+                outputs=[collection_status]
+            )
+            
+            # Test plots
+            test_plots_btn.click(
+                test_simple_plot,
+                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, collection_status]
+            )
+            
+            # Manual refresh plots
+            refresh_plots_btn.click(
+                refresh_metrics_plots,
+                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, metrics_output]
+            )
+            
+            # Force create plots from any available data
+            force_plots_btn.click(
+                force_create_plots,
+                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, collection_status]
+            )
+            
+            # Archive management handlers
+            export_btn.click(
+                export_data,
+                inputs=[export_filename],
+                outputs=[archive_status]
+            )
+            
+            import_btn.click(
+                import_data,
+                inputs=[import_file_dropdown],
+                outputs=[archive_status]
+            )
+            
+            clear_archive_btn.click(
+                clear_archive,
+                outputs=[archive_status]
+            )
+            
+            refresh_files_btn.click(
+                refresh_import_files,
+                outputs=[import_file_dropdown]
+            )
+            
+            # Auto-refresh plots every 15 seconds when collection is active
+            plots_timer = gr.Timer(15, active=False)
+            plots_timer.tick(
+                refresh_metrics_plots,
+                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, metrics_output]
+            )
+            
+            # Auto-start collection on interface load
+            def auto_start_collection():
+                """Auto-start metrics collection when interface loads"""
+                try:
+                    # Check if archive was loaded
+                    archived_metrics = len(self.metrics_collector.metrics_data)
+                    archived_timestamps = len(self.metrics_collector.timestamps)
+                    
+                    archive_msg = ""
+                    if archived_metrics > 0:
+                        archive_msg = f" (📦 Loaded {archived_metrics} archived metrics)"
+                    
+                    self.metrics_collector.set_pull_interval(30)  # 30 second default
+                    self.metrics_collector.start_collection(self.client)
+                    
+                    # Generate initial plots
+                    plots = self.get_metrics_plots()
+                    
+                    status_message = f"⚡ Auto-started metrics collection{archive_msg}"
+                    
+                    if "error" in plots:
+                        return None, None, None, None, f"{status_message} (plotting disabled)", plots["error"], f"Archive loaded: {archived_metrics} metrics, {archived_timestamps} timestamps"
+                    
+                    return (
+                        plots.get('memory'),
+                        plots.get('transactions'), 
+                        plots.get('tokens'),
+                        plots.get('model'),
+                        status_message,
+                        self.get_detailed_metrics(),
+                        f"Archive loaded: {archived_metrics} metrics, {archived_timestamps} timestamps"
+                    )
+                except Exception as e:
+                    return None, None, None, None, f"❌ Auto-start failed: {str(e)}", str(e), "Archive load failed"
+            
+            # Initialize plots and start collection on startup
+            interface.load(
+                auto_start_collection,
+                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, collection_status, metrics_output, archive_status]
+            )
+            
+            # Auto-refresh functionality with timer
+            timer = gr.Timer(30, active=False)  # 30 second timer, inactive by default
+            
+            # Auto-refresh handler
+            timer.tick(
+                refresh_management_overview,
+                outputs=[management_overview, metrics_output, capabilities_output, last_update_display]
+            )
+            
+            # Control timer based on checkbox
+            auto_refresh_checkbox.change(
+                lambda x: gr.Timer.update(active=x),
+                inputs=[auto_refresh_checkbox],
+                outputs=[timer]
+            )
+            
             # Diagnostics handlers
             diagnostics_btn.click(
                 self.run_diagnostics,
                 outputs=[diagnostics_output]
             )
             
-            test_btn.click(
+            test_streaming_btn.click(
                 self.test_simple_streaming,
                 outputs=[diagnostics_output]
             )
             
-            ui_test_btn.click(
+            test_ui_btn.click(
                 self.test_ui_update,
                 inputs=[chatbot],
                 outputs=[msg, chatbot, file_upload]
