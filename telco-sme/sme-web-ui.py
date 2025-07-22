@@ -260,55 +260,53 @@ class MetricsCollector:
             'memory': {
                 'color': '#FF6B6B',  # Red
                 'patterns': [
-                    r'memory_usage_bytes',
-                    r'memory_allocated_bytes', 
-                    r'memory_cached_bytes',
-                    r'memory_free_bytes',
+                    r'.*memory.*bytes',
                     r'gpu_memory_usage',
                     r'process_virtual_memory_bytes',
-                    r'process_resident_memory_bytes'
+                    r'process_resident_memory_bytes',
+                    r'vllm:gpu_cache_usage_perc'
                 ]
             },
             'transactions': {
                 'color': '#4ECDC4',  # Teal
                 'patterns': [
-                    r'http_requests_total',
-                    r'http_request_duration.*seconds',
-                    r'requests_per_second',
-                    r'response_time_seconds',
+                    r'http_requests.*',
+                    r'http_request.*',
+                    r'.*requests.*',
+                    r'.*request.*',
                     r'active_requests',
-                    r'queue_size',
-                    r'http_request_size_bytes'
+                    r'vllm:num_requests.*',
+                    r'process_open_fds',
+                    r'process_max_fds'
                 ]
             },
             'tokens': {
                 'color': '#45B7D1',  # Blue
                 'patterns': [
-                    r'prompt_tokens_total',
-                    r'completion_tokens_total',
-                    r'tokens_per_second',
-                    r'input_token_count',
-                    r'output_token_count',
-                    r'tokenizer_calls_total',
+                    r'.*tokens.*',
                     r'vllm:prompt_tokens.*',
                     r'vllm:generation_tokens.*',
-                    r'vllm:.*tokens.*',
-                    r'.*tokens.*'
+                    r'vllm:request_prompt_tokens.*',
+                    r'vllm:request_generation_tokens.*',
+                    r'vllm:iteration_tokens.*',
+                    r'vllm:request_max_num_generation_tokens.*'
                 ]
             },
             'model': {
                 'color': '#96CEB4',  # Green
                 'patterns': [
-                    r'model_load_time_seconds',
                     r'inference_time_seconds',
                     r'model_memory_usage',
-                    r'batch_size',
-                    r'concurrent_requests',
-                    r'vllm:request.*time.*seconds',
-                    r'vllm:.*inference.*',
+                    r'vllm:.*time.*seconds',
                     r'vllm:.*latency.*',
                     r'vllm:e2e.*',
-                    r'vllm:time_.*',
+                    r'vllm:.*prefill.*',
+                    r'vllm:.*decode.*',
+                    r'vllm:gpu_prefix_cache.*',
+                    r'vllm:num_preemptions.*',
+                    r'vllm:cache_config_info',
+                    r'process_cpu_seconds_total',
+                    r'process_start_time_seconds',
                     r'.*inference.*',
                     r'.*latency.*',
                     r'.*prefill.*',
@@ -433,10 +431,21 @@ class MetricsCollector:
                 
                 if values:
                     # If we have values but no timestamps, create synthetic ones
-                    if not timestamps or len(timestamps) != len(values):
+                    if not timestamps:
                         base_time = datetime.now()
                         timestamps = [base_time - timedelta(seconds=(len(values)-1-i)*30) for i in range(len(values))]
-                        print(f"  Generated {len(timestamps)} synthetic timestamps")
+                        print(f"  Generated {len(timestamps)} synthetic timestamps for {metric_name}")
+                    elif len(timestamps) != len(values):
+                        # Align timestamps with values by taking the most recent ones
+                        if len(timestamps) > len(values):
+                            timestamps = timestamps[-len(values):]
+                        else:
+                            # If we have fewer timestamps than values, pad with recent ones
+                            base_time = timestamps[-1] if timestamps else datetime.now()
+                            missing_count = len(values) - len(timestamps)
+                            for i in range(missing_count):
+                                timestamps.append(base_time + timedelta(seconds=(i+1)*30))
+                        print(f"  Aligned {len(timestamps)} timestamps with {len(values)} values for {metric_name}")
                     
                     # Use variations of the category color
                     color_variant = self._get_color_variant(category_color, i)
