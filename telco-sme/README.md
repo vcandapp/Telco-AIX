@@ -4,8 +4,9 @@
 ![Web UI Screenshot](webui.png)
 
 ## Overview
-The Telco-AIX SME (Subject Matter Expert) Web Interface is a sophisticated chat application designed for telecommunications professionals. It provides AI-powered conversations with specialized knowledge in telco technologies, network architecture, and technical solutions.
+The Telco-AIX SME (Subject Matter Expert) Web Interface is a genai web ui designed for telecommunications professionals to augment their daily operations. It provides AI-powered (Qwen3-32B Full Model Running on RHOAI-vLLM Runtime) conversations with specialized knowledge in telco technologies, network architecture, and technical solutions.
 
+We gather & visualize realtime metrics and diagnostics information provided by vLLM runtime. 
 ## Features
 
 ### 🤖 **AI-Powered Conversations**
