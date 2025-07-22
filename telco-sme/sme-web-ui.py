@@ -255,107 +255,89 @@ class MetricsCollector:
         # Load existing data on startup
         self.load_archive()
         
-        # Metric categories aligned with vLLM documentation
+        # Metric categories aligned with actual vLLM metrics documentation
         self.metric_categories = {
-            'server': {  # Server-level metrics (global engine state)
+            'scheduler': {  # vLLM Scheduler State (Core System Health)
                 'color': '#FF6B6B',  # Red
                 'patterns': [
-                    r'vllm:num_requests_running',  # Running requests gauge
-                    r'vllm:num_requests_waiting',  # Waiting requests gauge
-                    r'vllm:gpu_cache_usage_perc',  # GPU cache usage percentage
-                    r'active_requests',  # Active HTTP requests
-                    r'memory_usage_bytes',  # General memory usage (not model-specific)
+                    r'vllm:num_requests_running',  # Number of requests currently running on GPU
+                    r'vllm:num_requests_waiting',  # Number of requests waiting to be processed
+                    r'vllm:num_requests_swapped',  # Number of requests swapped to CPU
+                    r'vllm:num_preemptions_total',  # Cumulative number of preemptions
+                    r'vllm:request_success_total(?!.*created).*',  # Count of successfully processed requests
                 ]
             },
-            'request': {  # Request-level metrics (individual request characteristics)
+            'latency': {  # vLLM Request Latency Metrics (Performance Analysis)
                 'color': '#4ECDC4',  # Teal
                 'patterns': [
-                    r'vllm:time_to_first_token_seconds',  # TTFT histogram
-                    r'vllm:request_queue_time_seconds',  # Queue wait time
-                    r'vllm:e2e_request_latency_seconds',  # End-to-end latency
-                    r'vllm:request_prefill_time_seconds',  # Prefill phase time
-                    r'vllm:request_decode_time_seconds',  # Decode phase time
-                    r'vllm:time_per_output_token_seconds',  # Per-token generation time
-                    r'inference_time_seconds',  # Inference time
-                    r'request_.*seconds',  # Generic request timing metrics
-                    r'time_to_first_token.*',  # TTFT variations
-                    r'time_per_output_token.*',  # Token timing variations
+                    r'vllm:time_to_first_token_seconds(?!.*created).*',  # Histogram of time to first token
+                    r'vllm:time_per_output_token_seconds(?!.*created).*',  # Histogram of time per output token
+                    r'vllm:e2e_request_latency_seconds(?!.*created).*',  # End-to-end request latency
+                    r'vllm:request_queue_time_seconds(?!.*created).*',  # Time spent in WAITING phase
+                    r'vllm:request_inference_time_seconds(?!.*created).*',  # Time spent in RUNNING phase
+                    r'vllm:request_prefill_time_seconds(?!.*created).*',  # Time spent in PREFILL phase
+                    r'vllm:request_decode_time_seconds(?!.*created).*',  # Time spent in DECODE phase
+                    r'vllm:model_forward_time_milliseconds(?!.*created).*',  # Model forward pass time
+                    r'vllm:model_execute_time_milliseconds(?!.*created).*',  # Model execute function time
                 ]
             },
-            'tokens': {  # Token-related metrics
+            'throughput': {  # vLLM Token Processing & Throughput
                 'color': '#45B7D1',  # Blue
                 'patterns': [
-                    r'vllm:prompt_tokens_total',  # Total prompt tokens counter
-                    r'vllm:generation_tokens_total',  # Total generation tokens counter
-                    r'vllm:request_prompt_tokens.*',  # Per-request prompt tokens
-                    r'vllm:request_generation_tokens.*',  # Per-request generation tokens
-                    r'vllm:request_max_num_generation_tokens.*',  # Max generation tokens
-                    r'vllm:iteration_tokens.*',  # Tokens per iteration
-                    r'prompt_tokens_total',  # Legacy prompt tokens
-                    r'completion_tokens_total',  # Legacy completion tokens
-                    r'tokens_per_second',  # Token generation rate
-                    r'.*tokens.*total',  # Generic token totals
-                    r'.*tokens.*second',  # Token rates
-                    r'generation_tokens.*',  # Generation token variations
-                    r'prompt_tokens.*',  # Prompt token variations
+                    r'vllm:prompt_tokens_total',  # Number of prefill tokens processed
+                    r'vllm:generation_tokens_total',  # Number of generation tokens processed
+                    r'vllm:tokens_total',  # Total prefill + generation tokens processed
+                    r'vllm:iteration_tokens_total(?!.*created).*',  # Histogram of tokens per engine step
+                    r'vllm:request_prompt_tokens(?!.*created).*',  # Prefill tokens per request
+                    r'vllm:request_generation_tokens(?!.*created).*',  # Generation tokens per request
+                    r'vllm:avg_prompt_throughput_toks_per_s',  # Average prefill throughput (deprecated)
+                    r'vllm:avg_generation_throughput_toks_per_s',  # Average generation throughput (deprecated)
                 ]
             },
-            'cache': {  # Cache and prefix-related metrics
+            'cache': {  # vLLM KV Cache & Prefix Cache Metrics
                 'color': '#96CEB4',  # Green
                 'patterns': [
-                    r'vllm:prefix_cache_queries_total',  # Prefix cache queries
-                    r'vllm:prefix_cache_hits_total',  # Prefix cache hits
-                    r'vllm:gpu_prefix_cache.*',  # GPU prefix cache metrics
-                    r'gpu_prefix_cache.*',  # GPU prefix cache metrics (without vllm prefix)
+                    r'vllm:gpu_cache_usage_perc',  # GPU KV-cache usage (1 = 100% usage)
+                    r'vllm:cpu_cache_usage_perc',  # CPU KV-cache usage (1 = 100% usage)  
+                    r'vllm:gpu_prefix_cache_queries_total',  # GPU prefix cache queries
+                    r'vllm:gpu_prefix_cache_hits_total',  # GPU prefix cache hits
+                    r'vllm:gpu_prefix_cache_hit_rate',  # GPU prefix cache block hit rate
+                    r'vllm:cpu_prefix_cache_hit_rate',  # CPU prefix cache block hit rate
                 ]
             },
-            'performance': {  # System performance metrics
+            'parameters': {  # vLLM Request Parameters & Configuration
                 'color': '#FFA07A',  # Light Salmon
                 'patterns': [
-                    r'process_cpu_seconds_total',  # CPU usage
-                    r'process_start_time_seconds',  # Process start time
-                    r'process_open_fds',  # Open file descriptors
-                    r'process_max_fds',  # Max file descriptors
-                    r'process_.*memory_bytes',  # Process memory metrics
-                    r'cpu_seconds_total',  # CPU usage
-                    r'memory_info',  # Memory information
-                    r'process_.*',  # All process metrics
-                    r'cpu_.*',  # CPU metrics
-                    r'system_.*',  # System metrics
-                    r'cpu_usage.*',  # CPU usage metrics
-                    r'disk_.*',  # Disk metrics
-                    r'io_.*',  # IO metrics
+                    r'vllm:request_params_n(?!.*created).*',  # Histogram of the n request parameter
+                    r'vllm:request_params_max_tokens(?!.*created).*',  # Histogram of max_tokens parameter
+                    r'vllm:request_max_num_generation_tokens(?!.*created).*',  # Max requested generation tokens
                 ]
             },
-            'model': {  # Model loading and LoRA information  
+            'adapters': {  # vLLM LoRA & Adapter Metrics
                 'color': '#9B59B6',  # Purple
                 'patterns': [
-                    r'vllm:cache_config_info',  # Cache configuration
-                    r'vllm:lora_requests_info',  # LoRA adapter information
-                    r'model_config_info',  # Model configuration info
-                    r'model_.*',  # Model-related metrics
-                    r'lora_.*',  # LoRA adapter metrics
-                    r'adapter_.*',  # Adapter metrics
-                    r'config_.*',  # Configuration metrics
-                    r'.*_config_.*',  # Configuration metrics
-                    r'serving_.*',  # Serving configuration
-                    r'engine_.*',  # Engine state metrics
-                    r'.*model.*memory.*',  # Model memory usage
-                    r'.*engine.*state.*',  # Engine state
-                    # Try to capture some metrics that might be available
-                    r'vllm:num_preemptions.*',  # Preemption is model behavior
-                    r'.*preemption.*',  # Preemption metrics
-                    r'.*swap.*',  # Swap metrics (model memory management)
-                    r'gpu_memory_usage',  # GPU memory could be model related
-                    r'model_memory_usage',  # Direct model memory
+                    r'vllm:lora_requests_info',  # Running stats on LoRA requests
+                    r'vllm:cache_config_info',  # Cache configuration info
+                ]
+            },
+            'speculative': {  # vLLM Speculative Decoding Metrics
+                'color': '#E67E22',  # Orange
+                'patterns': [
+                    r'vllm:spec_decode_draft_acceptance_rate',  # Speculative token acceptance rate
+                    r'vllm:spec_decode_efficiency',  # Speculative decoding system efficiency
+                    r'vllm:spec_decode_num_accepted_tokens_total',  # Number of accepted tokens
+                    r'vllm:spec_decode_num_draft_tokens_total',  # Number of draft tokens
+                    r'vllm:spec_decode_num_emitted_tokens_total',  # Number of emitted tokens
                 ]
             },
             'http': {  # HTTP/Web server metrics
                 'color': '#17a2b8',  # Info blue
                 'patterns': [
-                    r'http_requests_total',  # Total HTTP requests
-                    r'http_request_duration_seconds',  # HTTP request duration
-                    r'http_.*',  # HTTP-related metrics
+                    r'http_requests(?!.*created).*',  # HTTP requests (excluding _created)
+                    r'http_request_duration(?!.*created).*',  # HTTP request duration (excluding _created)
+                    r'http_request_size_bytes(?!.*created).*',  # HTTP request size (excluding _created)
+                    r'http_response_size_bytes(?!.*created).*',  # HTTP response size (excluding _created)
+                    r'http_(?!.*created).*',  # All HTTP-related metrics (excluding _created)
                 ]
             },
             'system': {  # System resource and runtime metrics
@@ -390,6 +372,40 @@ class MetricsCollector:
                         continue
                         
         return metrics
+    
+    def is_static_timestamp_metric(self, metric_name: str, value: float) -> bool:
+        """Determine if a metric is a static timestamp that shouldn't be tracked"""
+        # Primary filter: All _created metrics are timestamps
+        if metric_name.endswith('_created'):
+            return True
+        
+        # Secondary filter: Known static timestamp patterns
+        static_patterns = [
+            r'.*_created$',              # All _created metrics
+            r'.*_start_time.*',          # Process start times
+            r'process_start_time.*',     # Process start timestamps
+            r'.*created.*timestamp.*',   # Explicit timestamp metrics
+            r'.*_creation_.*',           # Creation time metrics
+            r'.*_initialized.*',         # Initialization timestamps
+        ]
+        
+        for pattern in static_patterns:
+            if re.search(pattern, metric_name, re.IGNORECASE):
+                return True
+        
+        # Tertiary filter: Unix timestamp value detection (2024-2026 range)
+        # Current Unix timestamp range: 1.7e9 to 1.8e9 (2025 timeframe)
+        if 1.6e9 < value < 1.9e9:
+            # If it's a suspiciously large number that looks like a timestamp
+            # and has timestamp-like naming, filter it
+            timestamp_hints = [
+                'time', 'created', 'start', 'init', 'timestamp', 'epoch'
+            ]
+            name_lower = metric_name.lower()
+            if any(hint in name_lower for hint in timestamp_hints):
+                return True
+        
+        return False
     
     def categorize_metric(self, metric_name: str) -> str:
         """Categorize a metric based on its name"""
@@ -433,8 +449,20 @@ class MetricsCollector:
             
             self.timestamps.append(timestamp)
             
+            # Filter out static timestamp metrics
+            dynamic_metrics = {}
+            static_count = 0
+            
             for metric_name, value in parsed_metrics.items():
+                if self.is_static_timestamp_metric(metric_name, value):
+                    static_count += 1
+                    print(f"⏰ Skipping static timestamp metric: {metric_name} = {value}")
+                    continue
+                dynamic_metrics[metric_name] = value
                 self.metrics_data[metric_name].append(value)
+            
+            if static_count > 0:
+                print(f"🚫 Filtered out {static_count} static timestamp metrics, kept {len(dynamic_metrics)} dynamic metrics")
     
     def get_metrics_by_category(self, category: str) -> Dict[str, List]:
         """Get time series data for a specific category"""
@@ -836,14 +864,15 @@ class MetricsCollector:
     def sort_metrics_by_importance(self, metrics_items, category: str):
         """Sort metrics by importance based on category"""
         importance_order = {
-            'server': ['num_requests_running', 'num_requests_waiting', 'gpu_cache_usage', 'memory'],
-            'request': ['time_to_first_token', 'e2e_request_latency', 'request_queue_time'],
-            'tokens': ['prompt_tokens_total', 'generation_tokens_total', 'tokens_per_second'],
-            'cache': ['prefix_cache_hits', 'prefix_cache_queries', 'gpu_prefix_cache'],
-            'performance': ['cpu_seconds', 'memory_usage', 'gpu_memory'],
-            'model': ['model_memory', 'lora_requests'],
+            'scheduler': ['num_requests_running', 'num_requests_waiting', 'num_requests_swapped', 'num_preemptions'],
+            'latency': ['time_to_first_token', 'time_per_output_token', 'e2e_request_latency', 'request_queue_time'],
+            'throughput': ['prompt_tokens_total', 'generation_tokens_total', 'tokens_total', 'iteration_tokens'],
+            'cache': ['gpu_cache_usage_perc', 'gpu_prefix_cache_hit_rate', 'prefix_cache_hits', 'prefix_cache_queries'],
+            'parameters': ['request_params_max_tokens', 'request_params_n', 'request_max_num_generation_tokens'],
+            'adapters': ['lora_requests_info', 'cache_config_info'],
+            'speculative': ['spec_decode_draft_acceptance_rate', 'spec_decode_efficiency'],
             'http': ['http_requests_total', 'http_request_duration'],
-            'system': ['process_memory', 'python_info']
+            'system': ['python_info', 'process_memory']
         }
         
         priority_keywords = importance_order.get(category, [])
@@ -860,30 +889,28 @@ class MetricsCollector:
     def get_category_emoji(self, category: str) -> str:
         """Get emoji for category"""
         emojis = {
-            'server': '🖥️',
-            'request': '📋',
-            'tokens': '🎯',
+            'scheduler': '🎛️',
+            'latency': '⏱️',
+            'throughput': '🚀',
             'cache': '💾',
-            'performance': '⚡',
-            'model': '🧠',
+            'parameters': '⚙️',
+            'adapters': '🔗',
+            'speculative': '🔮',
             'http': '🌐',
-            'system': '⚙️',
-            'memory': '🧠',
-            'transactions': '🔄',
-            'model': '⚙️'
+            'system': '💻'
         }
         return emojis.get(category, '📊')
     
     def create_performance_summary(self, category: str, metrics, color: str) -> str:
         """Create performance summary panel for key metrics"""
-        if category == 'server':
-            return self.create_server_summary(metrics, color)
-        elif category == 'request':
-            return self.create_request_summary(metrics, color)
+        if category == 'scheduler':
+            return self.create_scheduler_summary(metrics, color)
+        elif category == 'latency':
+            return self.create_latency_summary(metrics, color)
         return ""
     
-    def create_server_summary(self, metrics, color: str) -> str:
-        """Create server performance summary"""
+    def create_scheduler_summary(self, metrics, color: str) -> str:
+        """Create vLLM scheduler state summary"""
         running_requests = 0
         waiting_requests = 0
         cache_usage = 0
@@ -958,8 +985,8 @@ class MetricsCollector:
         </div>
         """
     
-    def create_request_summary(self, metrics, color: str) -> str:
-        """Create request performance summary"""
+    def create_latency_summary(self, metrics, color: str) -> str:
+        """Create vLLM latency performance summary"""
         ttft = 0
         latency = 0
         queue_time = 0
@@ -1383,6 +1410,54 @@ class MetricsCollector:
             
         except Exception as e:
             return f"❌ Import failed: {str(e)}"
+    
+    def test_metric_patterns(self, sample_metrics: list = None) -> dict:
+        """Test metric categorization with sample data or provided metrics"""
+        if sample_metrics is None:
+            # Sample metrics from the provided data
+            sample_metrics = [
+                'memory_usage_bytes', 'http_requests_total', 'http_request_duration_seconds',
+                'prompt_tokens_total', 'completion_tokens_total', 'inference_time_seconds',
+                'gpu_memory_usage', 'active_requests', 'tokens_per_second', 'model_memory_usage',
+                'vllm:num_requests_running', 'vllm:num_requests_waiting', 'vllm:gpu_cache_usage_perc',
+                'vllm:gpu_prefix_cache_queries_total', 'vllm:gpu_prefix_cache_hits_total',
+                'vllm:time_to_first_token_seconds_bucket', 'vllm:time_per_output_token_seconds_count',
+                'vllm:e2e_request_latency_seconds_sum', 'vllm:request_params_n_bucket',
+                'vllm:request_params_max_tokens_count', 'vllm:iteration_tokens_total_bucket',
+                'vllm:request_success_total', 'vllm:num_preemptions_total',
+                'process_cpu_seconds_total', 'process_resident_memory_bytes', 'python_gc_objects_collected_total'
+            ]
+        
+        results = {'categorized': {}, 'unmatched': []}
+        
+        print(f"\n🧪 TESTING METRIC CATEGORIZATION:")
+        print(f"Testing {len(sample_metrics)} metrics...\n")
+        
+        for metric_name in sample_metrics:
+            category = self.categorize_metric(metric_name)
+            if category not in results['categorized']:
+                results['categorized'][category] = []
+            results['categorized'][category].append(metric_name)
+            
+            if category == 'other':
+                results['unmatched'].append(metric_name)
+        
+        print(f"\n📊 CATEGORIZATION RESULTS:")
+        for category, metrics in results['categorized'].items():
+            print(f"  {category.upper()}: {len(metrics)} metrics")
+            for metric in metrics[:3]:  # Show first 3
+                print(f"    ✓ {metric}")
+            if len(metrics) > 3:
+                print(f"    ... and {len(metrics) - 3} more")
+        
+        if results['unmatched']:
+            print(f"\n❌ UNMATCHED METRICS ({len(results['unmatched'])}):")
+            for metric in results['unmatched']:
+                print(f"    ✗ {metric}")
+        else:
+            print(f"\n✅ ALL METRICS SUCCESSFULLY CATEGORIZED!")
+        
+        return results
 
 class StreamingResponse:
     """Handle streaming response accumulation"""
@@ -2493,8 +2568,8 @@ class ChatInterface:
             print("🔍 Starting enhanced dashboard generation...")
             dashboards = {}
             
-            # New vLLM-aligned categories
-            categories = ['server', 'request', 'tokens', 'cache', 'performance', 'model', 'http', 'system']
+            # Consolidated vLLM categories matching our 4-tab structure
+            categories = ['scheduler', 'performance', 'cache', 'advanced']
             
             # Check if we have any data at all
             total_metrics = len(self.metrics_collector.metrics_data)
@@ -2510,20 +2585,36 @@ class ChatInterface:
                 no_data_html = "<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'><h3>📊 No Data Available</h3><p>Start metrics collection from the vLLM model server to see real-time dashboards.</p></div>"
                 return {category: no_data_html for category in categories}
             
-            for category in categories:
-                print(f"\n🔧 Processing {category} category...")
+            # Consolidated category mappings
+            category_mappings = {
+                'scheduler': ['scheduler'],  # vLLM scheduler state
+                'performance': ['latency', 'throughput'],  # Performance metrics 
+                'cache': ['cache'],  # Cache metrics
+                'advanced': ['parameters', 'adapters', 'speculative', 'http', 'system']  # Advanced features
+            }
+            
+            for consolidated_category in categories:
+                print(f"\n🔧 Processing {consolidated_category} category...")
                 try:
-                    # Get enhanced dashboard for category
-                    dashboard_html = self.metrics_collector.create_enhanced_metrics_dashboard(category)
-                    if dashboard_html:
-                        dashboards[category] = dashboard_html
-                        print(f"✅ {category} dashboard created successfully")
+                    combined_html = ""
+                    source_categories = category_mappings[consolidated_category]
+                    
+                    for source_category in source_categories:
+                        dashboard_html = self.metrics_collector.create_enhanced_metrics_dashboard(source_category)
+                        if dashboard_html:
+                            combined_html += dashboard_html
+                            print(f"✅ {source_category} → {consolidated_category} added")
+                    
+                    if combined_html:
+                        dashboards[consolidated_category] = combined_html
+                        print(f"✅ {consolidated_category} consolidated dashboard created")
                     else:
-                        print(f"⚠️ No data for {category}")
-                        dashboards[category] = f"<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'>No {category} metrics available yet.</div>"
+                        print(f"⚠️ No data for {consolidated_category}")
+                        dashboards[consolidated_category] = f"<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'>No {consolidated_category} metrics available yet.</div>"
+                        
                 except Exception as category_error:
-                    print(f"❌ Error creating {category} dashboard: {str(category_error)}")
-                    dashboards[category] = f"<div style='text-align: center; color: red; padding: 40px; background: #fff5f5; border-radius: 8px; margin: 20px;'>Error creating {category} dashboard: {str(category_error)}</div>"
+                    print(f"❌ Error creating {consolidated_category} dashboard: {str(category_error)}")
+                    dashboards[consolidated_category] = f"<div style='text-align: center; color: red; padding: 40px; background: #fff5f5; border-radius: 8px; margin: 20px;'>Error creating {consolidated_category} dashboard: {str(category_error)}</div>"
             
             print(f"🎉 Dashboard generation complete. Created {len(dashboards)} dashboards")
             return dashboards
@@ -3012,63 +3103,35 @@ class ChatInterface:
                                             max_lines=1
                                         )
                                 
-                                # Enhanced vLLM metrics dashboard organized by category
+                                # Consolidated vLLM metrics dashboard - 4 core categories
                                 with gr.Row():
                                     with gr.Tabs():
-                                        with gr.TabItem("🖥️ Server Engine", elem_classes="metrics-tab"):
-                                            server_dashboard = gr.HTML(
-                                                label="Server-Level Engine Metrics",
-                                                elem_id="server-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load server metrics</div>"
+                                        with gr.TabItem("🎛️ Scheduler & Queue", elem_classes="metrics-tab"):
+                                            scheduler_dashboard = gr.HTML(
+                                                label="vLLM Scheduler State & Request Queue",
+                                                elem_id="scheduler-dashboard", 
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load scheduler metrics</div>"
                                             )
                                         
-                                        with gr.TabItem("📋 Request Lifecycle", elem_classes="metrics-tab"):
-                                            request_dashboard = gr.HTML(
-                                                label="Request Lifecycle & Latency Metrics",
-                                                elem_id="request-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load request metrics</div>"
-                                            )
-                                        
-                                        with gr.TabItem("🎯 Token Processing", elem_classes="metrics-tab"):
-                                            tokens_dashboard = gr.HTML(
-                                                label="Token Processing Metrics",
-                                                elem_id="tokens-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load token metrics</div>"
-                                            )
-                                        
-                                        with gr.TabItem("💾 Cache & Memory", elem_classes="metrics-tab"):
-                                            cache_dashboard = gr.HTML(
-                                                label="Cache & GPU Memory Metrics",
-                                                elem_id="cache-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load cache metrics</div>"
-                                            )
-                                        
-                                        with gr.TabItem("⚡ Performance", elem_classes="metrics-tab"):
+                                        with gr.TabItem("⚡ Performance & Latency", elem_classes="metrics-tab"):
                                             performance_dashboard = gr.HTML(
-                                                label="System Performance Metrics",
+                                                label="Request Latency & Throughput Performance",
                                                 elem_id="performance-dashboard",
                                                 value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load performance metrics</div>"
                                             )
                                         
-                                        with gr.TabItem("🧠 Model State", elem_classes="metrics-tab"):
-                                            model_dashboard = gr.HTML(
-                                                label="Model & LoRA Metrics",
-                                                elem_id="model-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load model metrics</div>"
+                                        with gr.TabItem("💾 Cache & Memory", elem_classes="metrics-tab"):
+                                            cache_dashboard = gr.HTML(
+                                                label="KV Cache Usage & Prefix Cache Hit Rates",
+                                                elem_id="cache-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load cache metrics</div>"
                                             )
                                         
-                                        with gr.TabItem("🌐 HTTP Server", elem_classes="metrics-tab"):
-                                            http_dashboard = gr.HTML(
-                                                label="HTTP/Web Server Metrics",
-                                                elem_id="http-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load HTTP metrics</div>"
-                                            )
-                                        
-                                        with gr.TabItem("⚙️ System Runtime", elem_classes="metrics-tab"):
-                                            system_dashboard = gr.HTML(
-                                                label="System Resource Metrics",
-                                                elem_id="system-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load system metrics</div>"
+                                        with gr.TabItem("📊 Other Metrics", elem_classes="metrics-tab"):
+                                            advanced_dashboard = gr.HTML(
+                                                label="LoRA Adapters, Speculative Decoding & System Runtime",
+                                                elem_id="advanced-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load other metrics</div>"
                                             )
                                 
                                 # Archive management section
@@ -3341,36 +3404,24 @@ class ChatInterface:
                     
                     print(f"📊 Retrieved dashboards: {list(dashboards.keys())}")
                     
-                    # Extract dashboards for the new 8 categories
-                    server_dash = dashboards.get('server')
-                    request_dash = dashboards.get('request')
-                    tokens_dash = dashboards.get('tokens')
+                    # Extract dashboards for the 4 consolidated categories
+                    scheduler_dash = dashboards.get('scheduler')
+                    performance_dash = dashboards.get('performance') 
                     cache_dash = dashboards.get('cache')
-                    performance_dash = dashboards.get('performance')
-                    model_dash = dashboards.get('model')
-                    http_dash = dashboards.get('http')
-                    system_dash = dashboards.get('system')
+                    advanced_dash = dashboards.get('advanced')
                     
-                    print(f"🖥️ Server dashboard: {'✅ Present' if server_dash else '❌ None'}")
-                    print(f"📋 Request dashboard: {'✅ Present' if request_dash else '❌ None'}")
-                    print(f"🎯 Tokens dashboard: {'✅ Present' if tokens_dash else '❌ None'}")
-                    print(f"💾 Cache dashboard: {'✅ Present' if cache_dash else '❌ None'}")
+                    print(f"🎛️ Scheduler dashboard: {'✅ Present' if scheduler_dash else '❌ None'}")
                     print(f"⚡ Performance dashboard: {'✅ Present' if performance_dash else '❌ None'}")
-                    print(f"🧠 Model dashboard: {'✅ Present' if model_dash else '❌ None'}")
-                    print(f"🌐 HTTP dashboard: {'✅ Present' if http_dash else '❌ None'}")
-                    print(f"⚙️ System dashboard: {'✅ Present' if system_dash else '❌ None'}")
+                    print(f"💾 Cache dashboard: {'✅ Present' if cache_dash else '❌ None'}")
+                    print(f"📊 Other Metrics dashboard: {'✅ Present' if advanced_dash else '❌ None'}")
                     
                     metrics_summary = self.get_detailed_metrics()
                     
                     return (
-                        server_dash,
-                        request_dash, 
-                        tokens_dash,
-                        cache_dash,
+                        scheduler_dash,
                         performance_dash,
-                        model_dash,
-                        http_dash,
-                        system_dash,
+                        cache_dash,
+                        advanced_dash,
                         metrics_summary
                     )
                 except Exception as e:
@@ -3578,8 +3629,7 @@ class ChatInterface:
             # Manual refresh plots for enhanced dashboard
             refresh_plots_btn.click(
                 refresh_metrics_plots,
-                outputs=[server_dashboard, request_dashboard, tokens_dashboard, cache_dashboard, 
-                        performance_dashboard, model_dashboard, http_dashboard, system_dashboard, metrics_output]
+                outputs=[scheduler_dashboard, performance_dashboard, cache_dashboard, advanced_dashboard, metrics_output]
             )
             
             
@@ -3610,8 +3660,7 @@ class ChatInterface:
             plots_timer = gr.Timer(15, active=False)
             plots_timer.tick(
                 refresh_metrics_plots,
-                outputs=[server_dashboard, request_dashboard, tokens_dashboard, cache_dashboard, 
-                        performance_dashboard, model_dashboard, http_dashboard, system_dashboard, metrics_output]
+                outputs=[scheduler_dashboard, performance_dashboard, cache_dashboard, advanced_dashboard, metrics_output]
             )
             
             # Auto-load data on interface load
@@ -3649,34 +3698,27 @@ class ChatInterface:
                     except Exception as e:
                         metrics = f"## ❌ Error Loading Metrics\n\n{str(e)}"
                     
-                    # Get initial enhanced dashboards if we have data
-                    server_dash = request_dash = tokens_dash = cache_dash = None
-                    performance_dash = model_dash = http_dash = system_dash = None
+                    # Get initial enhanced dashboards if we have data (consolidated structure)
+                    scheduler_dash = performance_dash = cache_dash = advanced_dash = None
                     
                     if archived_metrics > 0:
                         try:
-                            print("🎨 Generating initial enhanced dashboards...")
+                            print("🎨 Generating initial consolidated dashboards...")
                             dashboards = self.get_metrics_plots()
-                            server_dash = dashboards.get('server', '<div>No server data</div>')
-                            request_dash = dashboards.get('request', '<div>No request data</div>')
-                            tokens_dash = dashboards.get('tokens', '<div>No tokens data</div>')
-                            cache_dash = dashboards.get('cache', '<div>No cache data</div>')
+                            scheduler_dash = dashboards.get('scheduler', '<div>No scheduler data</div>')
                             performance_dash = dashboards.get('performance', '<div>No performance data</div>')
-                            model_dash = dashboards.get('model', '<div>No model data</div>')
-                            http_dash = dashboards.get('http', '<div>No HTTP data</div>')
-                            system_dash = dashboards.get('system', '<div>No system data</div>')
-                            print("✅ Initial enhanced dashboards loaded successfully")
+                            cache_dash = dashboards.get('cache', '<div>No cache data</div>')
+                            advanced_dash = dashboards.get('advanced', '<div>No advanced data</div>')
+                            print("✅ Initial consolidated dashboards loaded successfully")
                         except Exception as e:
                             print(f"⚠️ Initial dashboard loading failed: {str(e)}")
                             # Set default placeholders
                             default_placeholder = "<div style='text-align: center; padding: 40px; color: #666;'>Loading metrics data...</div>"
-                            server_dash = request_dash = tokens_dash = cache_dash = default_placeholder
-                            performance_dash = model_dash = http_dash = system_dash = default_placeholder
+                            scheduler_dash = performance_dash = cache_dash = advanced_dash = default_placeholder
                     else:
                         # No archived data - set loading placeholders  
                         loading_placeholder = "<div style='text-align: center; padding: 40px; color: #666;'>No metrics data available. Start collection or refresh to load data.</div>"
-                        server_dash = request_dash = tokens_dash = cache_dash = loading_placeholder
-                        performance_dash = model_dash = http_dash = system_dash = loading_placeholder
+                        scheduler_dash = performance_dash = cache_dash = advanced_dash = loading_placeholder
                     
                     # Initial collection status
                     archive_msg = ""
@@ -3694,14 +3736,10 @@ class ChatInterface:
                         capabilities,
                         timestamp,
                         collection_msg,
-                        server_dash,
-                        request_dash,
-                        tokens_dash,
-                        cache_dash,
+                        scheduler_dash,
                         performance_dash,
-                        model_dash,
-                        http_dash,
-                        system_dash
+                        cache_dash,
+                        advanced_dash
                     )
                     
                 except Exception as e:
@@ -3712,7 +3750,6 @@ class ChatInterface:
                         error_msg, error_msg, error_msg, 
                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                         error_msg, 
-                        error_dash, error_dash, error_dash, error_dash,
                         error_dash, error_dash, error_dash, error_dash
                     )
             
@@ -3755,8 +3792,7 @@ class ChatInterface:
             interface.load(
                 auto_load_interface_data,
                 outputs=[management_overview, metrics_output, capabilities_output, last_update_display, 
-                         collection_status, server_dashboard, request_dashboard, tokens_dashboard, cache_dashboard,
-                         performance_dashboard, model_dashboard, http_dashboard, system_dashboard]
+                         collection_status, scheduler_dashboard, performance_dashboard, cache_dashboard, advanced_dashboard]
             )
             
             # Auto-refresh functionality with timer
