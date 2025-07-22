@@ -263,14 +263,8 @@ class MetricsCollector:
                     r'vllm:num_requests_running',  # Running requests gauge
                     r'vllm:num_requests_waiting',  # Waiting requests gauge
                     r'vllm:gpu_cache_usage_perc',  # GPU cache usage percentage
-                    r'vllm:cache_config_info',  # Cache configuration info
-                    r'vllm:lora_requests_info',  # LoRA adapter requests
-                    r'vllm:num_preemptions.*',  # Preemption counts
-                    r'process_.*memory_bytes',  # Process memory metrics
-                    r'gpu_memory_usage',  # GPU memory usage
-                    r'model_memory_usage',  # Model memory
                     r'active_requests',  # Active HTTP requests
-                    r'http_requests_total'  # Total HTTP requests
+                    r'memory_usage_bytes',  # General memory usage (not model-specific)
                 ]
             },
             'request': {  # Request-level metrics (individual request characteristics)
@@ -282,8 +276,10 @@ class MetricsCollector:
                     r'vllm:request_prefill_time_seconds',  # Prefill phase time
                     r'vllm:request_decode_time_seconds',  # Decode phase time
                     r'vllm:time_per_output_token_seconds',  # Per-token generation time
-                    r'http_request_duration_seconds',  # HTTP request duration
-                    r'inference_time_seconds'  # Inference time
+                    r'inference_time_seconds',  # Inference time
+                    r'request_.*seconds',  # Generic request timing metrics
+                    r'time_to_first_token.*',  # TTFT variations
+                    r'time_per_output_token.*',  # Token timing variations
                 ]
             },
             'tokens': {  # Token-related metrics
@@ -297,7 +293,11 @@ class MetricsCollector:
                     r'vllm:iteration_tokens.*',  # Tokens per iteration
                     r'prompt_tokens_total',  # Legacy prompt tokens
                     r'completion_tokens_total',  # Legacy completion tokens
-                    r'tokens_per_second'  # Token generation rate
+                    r'tokens_per_second',  # Token generation rate
+                    r'.*tokens.*total',  # Generic token totals
+                    r'.*tokens.*second',  # Token rates
+                    r'generation_tokens.*',  # Generation token variations
+                    r'prompt_tokens.*',  # Prompt token variations
                 ]
             },
             'cache': {  # Cache and prefix-related metrics
@@ -306,12 +306,67 @@ class MetricsCollector:
                     r'vllm:prefix_cache_queries_total',  # Prefix cache queries
                     r'vllm:prefix_cache_hits_total',  # Prefix cache hits
                     r'vllm:gpu_prefix_cache.*',  # GPU prefix cache metrics
+                    r'gpu_prefix_cache.*',  # GPU prefix cache metrics (without vllm prefix)
+                ]
+            },
+            'performance': {  # System performance metrics
+                'color': '#FFA07A',  # Light Salmon
+                'patterns': [
                     r'process_cpu_seconds_total',  # CPU usage
                     r'process_start_time_seconds',  # Process start time
                     r'process_open_fds',  # Open file descriptors
-                    r'process_max_fds'  # Max file descriptors
+                    r'process_max_fds',  # Max file descriptors
+                    r'process_.*memory_bytes',  # Process memory metrics
+                    r'cpu_seconds_total',  # CPU usage
+                    r'memory_info',  # Memory information
+                    r'process_.*',  # All process metrics
+                    r'cpu_.*',  # CPU metrics
+                    r'system_.*',  # System metrics
+                    r'cpu_usage.*',  # CPU usage metrics
+                    r'disk_.*',  # Disk metrics
+                    r'io_.*',  # IO metrics
                 ]
-            }
+            },
+            'model': {  # Model loading and LoRA information  
+                'color': '#9B59B6',  # Purple
+                'patterns': [
+                    r'vllm:cache_config_info',  # Cache configuration
+                    r'vllm:lora_requests_info',  # LoRA adapter information
+                    r'model_config_info',  # Model configuration info
+                    r'model_.*',  # Model-related metrics
+                    r'lora_.*',  # LoRA adapter metrics
+                    r'adapter_.*',  # Adapter metrics
+                    r'config_.*',  # Configuration metrics
+                    r'.*_config_.*',  # Configuration metrics
+                    r'serving_.*',  # Serving configuration
+                    r'engine_.*',  # Engine state metrics
+                    r'.*model.*memory.*',  # Model memory usage
+                    r'.*engine.*state.*',  # Engine state
+                    # Try to capture some metrics that might be available
+                    r'vllm:num_preemptions.*',  # Preemption is model behavior
+                    r'.*preemption.*',  # Preemption metrics
+                    r'.*swap.*',  # Swap metrics (model memory management)
+                    r'gpu_memory_usage',  # GPU memory could be model related
+                    r'model_memory_usage',  # Direct model memory
+                ]
+            },
+            'http': {  # HTTP/Web server metrics
+                'color': '#17a2b8',  # Info blue
+                'patterns': [
+                    r'http_requests_total',  # Total HTTP requests
+                    r'http_request_duration_seconds',  # HTTP request duration
+                    r'http_.*',  # HTTP-related metrics
+                ]
+            },
+            'system': {  # System resource and runtime metrics
+                'color': '#6c757d',  # Gray
+                'patterns': [
+                    r'python_info',  # Python runtime info
+                    r'python_.*',  # Python metrics
+                    r'system_.*',  # System metrics
+                    r'runtime_.*',  # Runtime metrics
+                ]
+            },
         }
     
     def parse_prometheus_metrics(self, metrics_text: str) -> Dict[str, float]:
@@ -341,7 +396,9 @@ class MetricsCollector:
         for category, info in self.metric_categories.items():
             for pattern in info['patterns']:
                 if re.search(pattern, metric_name, re.IGNORECASE):
+                    print(f"📊 Metric '{metric_name}' → '{category}' (matched pattern: '{pattern}')")
                     return category
+        print(f"❓ Metric '{metric_name}' → 'other' (no pattern match)")
         return 'other'
     
     def debug_categorization(self):
@@ -653,16 +710,44 @@ class MetricsCollector:
             elif 'info' in name_lower:
                 return f"{value:.0f}"
         
-        # Memory/bytes formatting
-        elif 'bytes' in name_lower or 'memory' in name_lower:
-            if value > 1e9:
-                return f"{value/1e9:.2f} GB"
-            elif value > 1e6:
-                return f"{value/1e6:.2f} MB"
-            elif value > 1e3:
-                return f"{value/1e3:.2f} KB"
+        # Memory/bytes formatting with better accuracy
+        elif 'bytes' in name_lower or ('memory' in name_lower and 'usage' in name_lower):
+            if value >= 1024**3:  # GB (1024^3)
+                return f"{value/(1024**3):.2f} GB"
+            elif value >= 1024**2:  # MB (1024^2) 
+                return f"{value/(1024**2):.2f} MB"
+            elif value >= 1024:  # KB
+                return f"{value/1024:.2f} KB"
             else:
                 return f"{value:.0f} B"
+        
+        # Process-specific metrics
+        elif 'process_start_time' in name_lower:
+            # This is usually a Unix timestamp - convert to relative time
+            import time
+            current_time = time.time()
+            uptime = current_time - value
+            if uptime > 86400:  # > 1 day
+                return f"{uptime/86400:.1f} days ago"
+            elif uptime > 3600:  # > 1 hour
+                return f"{uptime/3600:.1f} hours ago"
+            elif uptime > 60:  # > 1 minute
+                return f"{uptime/60:.1f} minutes ago"
+            else:
+                return f"{uptime:.0f} seconds ago"
+        
+        elif 'process_cpu_seconds' in name_lower:
+            # This is cumulative CPU time
+            if value > 3600:
+                return f"{value/3600:.2f} CPU-hours"
+            elif value > 60:
+                return f"{value/60:.2f} CPU-minutes"
+            else:
+                return f"{value:.2f} CPU-seconds"
+        
+        elif any(x in name_lower for x in ['open_fds', 'max_fds']):
+            # File descriptors - just show as integer
+            return f"{int(value):,}"
         
         # Generic time/seconds formatting
         elif any(x in name_lower for x in ['seconds', 'latency', 'time', 'duration']):
@@ -694,30 +779,38 @@ class MetricsCollector:
             else:
                 return f"{value:.3f}"
     
-    def create_metrics_table(self, category: str) -> str:
-        """Create HTML table with real-time metric values"""
+    def create_enhanced_metrics_dashboard(self, category: str) -> str:
+        """Create enhanced HTML dashboard with eye-catching visuals for vLLM metrics"""
         try:
             metrics_data = self.get_metrics_by_category(category)
             if not metrics_data:
-                return "<p>No metrics data available</p>"
+                return f"<div style='text-align: center; padding: 40px; color: #666;'>No {category} metrics available</div>"
             
-            # Sort metrics by name for consistent ordering
-            sorted_metrics = sorted(metrics_data.items())
+            # Get category color
+            category_color = self.metric_categories.get(category, {}).get('color', '#666')
             
-            # Create HTML table
-            html = """<div style='overflow-x: auto;'>
-                <table style='width: 100%; border-collapse: collapse; font-family: monospace;'>
-                <thead>
-                    <tr style='background-color: #f2f2f2;'>
-                        <th style='border: 1px solid #ddd; padding: 12px; text-align: left;'>Metric Name</th>
-                        <th style='border: 1px solid #ddd; padding: 12px; text-align: right;'>Current Value</th>
-                        <th style='border: 1px solid #ddd; padding: 12px; text-align: right;'>Min</th>
-                        <th style='border: 1px solid #ddd; padding: 12px; text-align: right;'>Max</th>
-                        <th style='border: 1px solid #ddd; padding: 12px; text-align: right;'>Avg</th>
-                        <th style='border: 1px solid #ddd; padding: 12px; text-align: right;'>Samples</th>
-                    </tr>
-                </thead>
-                <tbody>"""
+            # Sort metrics by importance for display
+            sorted_metrics = self.sort_metrics_by_importance(metrics_data.items(), category)
+            
+            # Create dashboard header
+            html = f"""
+            <div style='background: linear-gradient(135deg, {category_color}20, white); border-radius: 12px; padding: 20px; margin: 10px 0;'>
+                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
+                    <h3 style='margin: 0; color: {category_color}; font-size: 1.4em; font-weight: bold;'>
+                        {self.get_category_emoji(category)} {category.title()} Metrics
+                    </h3>
+                    <div style='background: {category_color}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold;'>
+                        {len(sorted_metrics)} Active Metrics
+                    </div>
+                </div>
+            """
+            
+            # Add performance summary if applicable
+            if category in ['server', 'request']:
+                html += self.create_performance_summary(category, sorted_metrics, category_color)
+            
+            # Create metrics grid with larger cards for better readability
+            html += """<div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;'>"""
             
             for metric_name, data in sorted_metrics:
                 values = data['values']
@@ -730,41 +823,369 @@ class MetricsCollector:
                 avg_val = sum(values) / len(values)
                 sample_count = len(values)
                 
-                # Format all values with appropriate units
-                current_formatted = self.format_metric_value(metric_name, current)
-                min_formatted = self.format_metric_value(metric_name, min_val)
-                max_formatted = self.format_metric_value(metric_name, max_val)
-                avg_formatted = self.format_metric_value(metric_name, avg_val)
-                
-                # Color coding based on current vs avg
-                if current > avg_val * 1.2:
-                    value_color = '#d73027'  # Red for high
-                elif current < avg_val * 0.8:
-                    value_color = '#1a9850'  # Green for low
-                else:
-                    value_color = '#000000'  # Black for normal
-                
-                html += f"""
-                    <tr>
-                        <td style='border: 1px solid #ddd; padding: 8px;'>{metric_name}</td>
-                        <td style='border: 1px solid #ddd; padding: 8px; text-align: right; color: {value_color}; font-weight: bold;'>{current_formatted}</td>
-                        <td style='border: 1px solid #ddd; padding: 8px; text-align: right;'>{min_formatted}</td>
-                        <td style='border: 1px solid #ddd; padding: 8px; text-align: right;'>{max_formatted}</td>
-                        <td style='border: 1px solid #ddd; padding: 8px; text-align: right;'>{avg_formatted}</td>
-                        <td style='border: 1px solid #ddd; padding: 8px; text-align: right;'>{sample_count}</td>
-                    </tr>"""
+                # Create metric card
+                html += self.create_metric_card(metric_name, current, min_val, max_val, avg_val, sample_count, category_color)
             
-            html += """</tbody></table></div>"""
-            
-            # Add last update timestamp
-            update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            html += f"<p style='text-align: right; color: #666; font-size: 0.9em; margin-top: 10px;'>Last updated: {update_time}</p>"
-            
+            html += "</div></div>"  # Close grid and main container
             return html
             
         except Exception as e:
-            print(f"❌ Error creating metrics table for {category}: {str(e)}")
-            return f"<p>Error creating metrics table: {str(e)}</p>"
+            print(f"Error creating enhanced dashboard for {category}: {e}")
+            return f"<div style='text-align: center; padding: 40px; color: red;'>Error loading {category} metrics: {str(e)}</div>"
+    
+    def sort_metrics_by_importance(self, metrics_items, category: str):
+        """Sort metrics by importance based on category"""
+        importance_order = {
+            'server': ['num_requests_running', 'num_requests_waiting', 'gpu_cache_usage', 'memory'],
+            'request': ['time_to_first_token', 'e2e_request_latency', 'request_queue_time'],
+            'tokens': ['prompt_tokens_total', 'generation_tokens_total', 'tokens_per_second'],
+            'cache': ['prefix_cache_hits', 'prefix_cache_queries', 'gpu_prefix_cache'],
+            'performance': ['cpu_seconds', 'memory_usage', 'gpu_memory'],
+            'model': ['model_memory', 'lora_requests'],
+            'http': ['http_requests_total', 'http_request_duration'],
+            'system': ['process_memory', 'python_info']
+        }
+        
+        priority_keywords = importance_order.get(category, [])
+        
+        def get_priority(item):
+            metric_name, _ = item
+            for i, keyword in enumerate(priority_keywords):
+                if keyword.lower() in metric_name.lower():
+                    return i
+            return len(priority_keywords)
+        
+        return sorted(metrics_items, key=get_priority)
+    
+    def get_category_emoji(self, category: str) -> str:
+        """Get emoji for category"""
+        emojis = {
+            'server': '🖥️',
+            'request': '📋',
+            'tokens': '🎯',
+            'cache': '💾',
+            'performance': '⚡',
+            'model': '🧠',
+            'http': '🌐',
+            'system': '⚙️',
+            'memory': '🧠',
+            'transactions': '🔄',
+            'model': '⚙️'
+        }
+        return emojis.get(category, '📊')
+    
+    def create_performance_summary(self, category: str, metrics, color: str) -> str:
+        """Create performance summary panel for key metrics"""
+        if category == 'server':
+            return self.create_server_summary(metrics, color)
+        elif category == 'request':
+            return self.create_request_summary(metrics, color)
+        return ""
+    
+    def create_server_summary(self, metrics, color: str) -> str:
+        """Create server performance summary"""
+        running_requests = 0
+        waiting_requests = 0
+        cache_usage = 0
+        total_memory = 0
+        
+        print(f"🔍 Server summary debug - processing {len(metrics)} metrics")
+        
+        for metric_name, data in metrics:
+            values = data['values']
+            if not values:
+                continue
+            current = values[-1]
+            
+            print(f"  - {metric_name}: {current}")
+            
+            # More flexible pattern matching
+            metric_lower = metric_name.lower()
+            if any(pattern in metric_lower for pattern in ['requests_running', 'running', 'num_requests_running']):
+                running_requests = current
+                print(f"    → Found running requests: {current}")
+            elif any(pattern in metric_lower for pattern in ['requests_waiting', 'waiting', 'num_requests_waiting']):
+                waiting_requests = current
+                print(f"    → Found waiting requests: {current}")
+            elif any(pattern in metric_lower for pattern in ['cache_usage', 'gpu_cache_usage', 'cache.*perc']):
+                cache_usage = current
+                print(f"    → Found cache usage: {current}")
+            elif any(pattern in metric_lower for pattern in ['memory_usage_bytes', 'memory']):
+                total_memory = current
+                print(f"    → Found memory usage: {current}")
+        
+        total_requests = running_requests + waiting_requests
+        status_color = '#28a745' if total_requests < 10 else '#ffc107' if total_requests < 50 else '#dc3545'
+        
+        # Format memory display
+        memory_display = "N/A"
+        if total_memory > 0:
+            if total_memory > 1024*1024*1024:  # GB
+                memory_display = f"{total_memory/(1024*1024*1024):.1f} GB"
+            elif total_memory > 1024*1024:  # MB
+                memory_display = f"{total_memory/(1024*1024):.1f} MB"
+            elif total_memory > 1024:  # KB
+                memory_display = f"{total_memory/1024:.1f} KB"
+            else:
+                memory_display = f"{total_memory:.0f} B"
+        
+        print(f"🔍 Final summary values: requests={total_requests}, running={running_requests}, waiting={waiting_requests}, cache={cache_usage}%, memory={memory_display}")
+        
+        return f"""
+        <div style='background: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; border-left: 4px solid {color};'>
+            <div style='display: flex; justify-content: space-around; text-align: center;'>
+                <div>
+                    <div style='font-size: 2em; font-weight: bold; color: {status_color};'>{int(total_requests)}</div>
+                    <div style='color: #666; font-size: 0.9em;'>Total Requests</div>
+                </div>
+                <div>
+                    <div style='font-size: 2em; font-weight: bold; color: #17a2b8;'>{int(running_requests)}</div>
+                    <div style='color: #666; font-size: 0.9em;'>Running</div>
+                </div>
+                <div>
+                    <div style='font-size: 2em; font-weight: bold; color: #6c757d;'>{int(waiting_requests)}</div>
+                    <div style='color: #666; font-size: 0.9em;'>Waiting</div>
+                </div>
+                <div>
+                    <div style='font-size: 1.8em; font-weight: bold; color: {color};'>{cache_usage:.1f}%</div>
+                    <div style='color: #666; font-size: 0.9em;'>Cache Usage</div>
+                </div>
+                <div>
+                    <div style='font-size: 1.6em; font-weight: bold; color: #28a745;'>{memory_display}</div>
+                    <div style='color: #666; font-size: 0.9em;'>Memory</div>
+                </div>
+            </div>
+        </div>
+        """
+    
+    def create_request_summary(self, metrics, color: str) -> str:
+        """Create request performance summary"""
+        ttft = 0
+        latency = 0
+        queue_time = 0
+        
+        for metric_name, data in metrics:
+            values = data['values']
+            if not values:
+                continue
+            avg_val = sum(values) / len(values)
+            
+            if 'time_to_first_token' in metric_name:
+                ttft = avg_val
+            elif 'e2e_request_latency' in metric_name:
+                latency = avg_val
+            elif 'queue_time' in metric_name:
+                queue_time = avg_val
+        
+        return f"""
+        <div style='background: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; border-left: 4px solid {color};'>
+            <div style='display: flex; justify-content: space-around; text-align: center;'>
+                <div>
+                    <div style='font-size: 1.8em; font-weight: bold; color: {color};'>{ttft:.2f}s</div>
+                    <div style='color: #666; font-size: 0.9em;'>Avg TTFT</div>
+                </div>
+                <div>
+                    <div style='font-size: 1.8em; font-weight: bold; color: #17a2b8;'>{latency:.2f}s</div>
+                    <div style='color: #666; font-size: 0.9em;'>Avg Latency</div>
+                </div>
+                <div>
+                    <div style='font-size: 1.8em; font-weight: bold; color: #6c757d;'>{queue_time:.2f}s</div>
+                    <div style='color: #666; font-size: 0.9em;'>Avg Queue Time</div>
+                </div>
+            </div>
+        </div>
+        """
+    
+    def create_metric_card(self, metric_name: str, current: float, min_val: float, max_val: float, avg_val: float, sample_count: int, color: str) -> str:
+        """Create individual metric card with gauge visualization"""
+        # Format values with error handling
+        try:
+            current_str = self.format_metric_value(metric_name, current) if current is not None else "N/A"
+            min_str = self.format_metric_value(metric_name, min_val) if min_val is not None else "N/A"
+            max_str = self.format_metric_value(metric_name, max_val) if max_val is not None else "N/A"
+            avg_str = self.format_metric_value(metric_name, avg_val) if avg_val is not None else "N/A"
+        except Exception as e:
+            print(f"⚠️ Error formatting {metric_name}: {e}")
+            current_str = str(current) if current is not None else "Error"
+            min_str = str(min_val) if min_val is not None else "Error"
+            max_str = str(max_val) if max_val is not None else "Error" 
+            avg_str = str(avg_val) if avg_val is not None else "Error"
+        
+        # Calculate trend color based on current vs average with safety checks
+        try:
+            if current is not None and avg_val is not None and avg_val != 0:
+                if current > avg_val * 1.1:
+                    trend_color = '#dc3545'  # Red for high values
+                    trend_icon = '📈'
+                elif current < avg_val * 0.9:
+                    trend_color = '#28a745'  # Green for low values
+                    trend_icon = '📉'
+                else:
+                    trend_color = '#ffc107'  # Yellow for stable
+                    trend_icon = '📊'
+            else:
+                trend_color = '#6c757d'  # Gray for unknown
+                trend_icon = '➖'
+        except:
+            trend_color = '#6c757d'
+            trend_icon = '❓'
+        
+        # Calculate gauge percentage (0-100%) with safety checks
+        try:
+            if max_val is not None and min_val is not None and current is not None and max_val > min_val:
+                gauge_percent = min(100, max(0, ((current - min_val) / (max_val - min_val)) * 100))
+            else:
+                gauge_percent = 50
+        except:
+            gauge_percent = 50
+        
+        # Clean metric name for display with smart truncation
+        display_name = self.create_smart_display_name(metric_name)
+        
+        return f"""
+        <div style='background: white; border-radius: 8px; padding: 15px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);' title='{metric_name}'>
+            <div style='display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;'>
+                <div style='font-weight: bold; color: #333; font-size: 0.9em; line-height: 1.2; flex: 1; margin-right: 8px;'>{display_name}</div>
+                <div style='color: {trend_color}; font-size: 1.1em; flex-shrink: 0;'>{trend_icon}</div>
+            </div>
+            
+            <div style='margin: 10px 0;'>
+                <div style='background: #f0f0f0; border-radius: 10px; height: 8px; overflow: hidden;'>
+                    <div style='background: linear-gradient(90deg, {color}, {color}80); height: 100%; width: {gauge_percent}%; transition: width 0.3s ease;'></div>
+                </div>
+            </div>
+            
+            <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;'>
+                <div>
+                    <div style='color: {trend_color}; font-weight: bold; font-size: 1.1em;'>{current_str}</div>
+                    <div style='color: #666;'>Current</div>
+                </div>
+                <div>
+                    <div style='color: #333; font-weight: bold;'>{avg_str}</div>
+                    <div style='color: #666;'>Average</div>
+                </div>
+                <div>
+                    <div style='color: #28a745; font-weight: bold;'>{min_str}</div>
+                    <div style='color: #666;'>Min</div>
+                </div>
+                <div>
+                    <div style='color: #dc3545; font-weight: bold;'>{max_str}</div>
+                    <div style='color: #666;'>Max</div>
+                </div>
+            </div>
+            
+            <div style='text-align: center; margin-top: 8px; color: #888; font-size: 0.8em;'>
+                {sample_count} samples
+            </div>
+        </div>
+        """
+    
+    def create_smart_display_name(self, metric_name: str) -> str:
+        """Create smart, distinguishable display names for metrics"""
+        # Remove vllm prefix and common prefixes
+        name = metric_name.replace('vllm:', '').replace('process_', '')
+        
+        # Smart abbreviations and replacements for common patterns
+        replacements = {
+            'request_': 'Req ',
+            'generation_': 'Gen ',
+            'prompt_': 'Prompt ',
+            'tokens_': 'Tokens ',
+            'seconds': 'Sec',
+            'total': 'Total',
+            'latency': 'Lat',
+            'duration': 'Dur',
+            'time_to_first_token': 'TTFT',
+            'time_per_output_token': 'TPOT',
+            'e2e_request_latency': 'E2E Lat',
+            'queue_time': 'Queue',
+            'prefill_time': 'Prefill',
+            'decode_time': 'Decode',
+            'inference_time': 'Inference',
+            'http_request_duration': 'HTTP Dur',
+            'max_num_generation': 'Max Gen',
+            'iteration_': 'Iter ',
+            'cpu_seconds': 'CPU Sec',
+            'memory_bytes': 'Memory',
+            'open_fds': 'Open FDs',
+            'max_fds': 'Max FDs',
+            'start_time': 'Start Time',
+            'cache_hits': 'Cache Hits',
+            'cache_queries': 'Cache Queries',
+            'gpu_prefix_cache': 'GPU Cache',
+            'prefix_cache': 'PCache',
+            # Additional patterns from the debug screenshots
+            'request_prompt_tokens': 'Req Prompt Tokens',
+            'request_generation_tokens': 'Req Gen Tokens', 
+            'request_max_num_generation_tokens': 'Req Max Gen Tokens',
+            'request_inference_time': 'Req Inference Time',
+            'request_prefill_time': 'Req Prefill Time',
+            'request_decode_time': 'Req Decode Time',
+            'request_queue_time': 'Req Queue Time',
+            'iteration_tokens': 'Iter Tokens',
+            'completion_tokens': 'Completion Tokens',
+        }
+        
+        # Apply replacements
+        for old, new in replacements.items():
+            name = name.replace(old, new)
+        
+        # Clean up underscores and format
+        name = name.replace('_', ' ').strip()
+        
+        # Handle histogram bucket indicators
+        if 'bucket' in name.lower():
+            # Extract bucket value for histogram metrics
+            import re
+            bucket_match = re.search(r'le="([^"]+)"', metric_name)
+            if bucket_match:
+                bucket_val = bucket_match.group(1)
+                name = name.split(' bucket')[0] + f' ≤{bucket_val}'
+        
+        # Handle sum/count suffixes for histogram metrics  
+        if name.endswith(' sum'):
+            name = name.replace(' sum', ' (Sum)')
+        elif name.endswith(' count'):
+            name = name.replace(' count', ' (Count)')
+            
+        # Smart capitalization
+        words = name.split()
+        capitalized_words = []
+        for word in words:
+            if word.upper() in ['TTFT', 'TPOT', 'E2E', 'HTTP', 'GPU', 'CPU', 'FDS']:
+                capitalized_words.append(word.upper())
+            elif word.lower() in ['sec', 'lat', 'dur', 'gen', 'req']:
+                capitalized_words.append(word.capitalize())
+            else:
+                capitalized_words.append(word.title())
+        
+        name = ' '.join(capitalized_words)
+        
+        # Final length management - be more generous but still readable
+        if len(name) > 35:
+            # Try to truncate at word boundaries
+            words = name.split()
+            truncated = []
+            current_length = 0
+            
+            for word in words:
+                if current_length + len(word) + 1 <= 32:  # +1 for space
+                    truncated.append(word)
+                    current_length += len(word) + 1
+                else:
+                    break
+            
+            if len(truncated) > 0:
+                name = ' '.join(truncated) + '...'
+            else:
+                # Fallback: hard truncate
+                name = name[:32] + '...'
+        
+        return name
+    
+    def create_metrics_table(self, category: str) -> str:
+        """Legacy method - redirect to enhanced dashboard"""
+        return self.create_enhanced_metrics_dashboard(category)
     
     def create_time_series_plot(self, category: str) -> Optional[str]:
         """Return metrics table instead of plot"""
@@ -1526,12 +1947,18 @@ class ChatInterface:
                 messages.append({"role": "system", "content": active_system_prompt})
             
             # Add conversation history (limit to prevent huge contexts)
-            recent_history = history[-10:] if len(history) > 10 else history
-            for user_msg, assistant_msg in recent_history:
-                if user_msg:
-                    messages.append({"role": "user", "content": user_msg})
-                if assistant_msg:
-                    messages.append({"role": "assistant", "content": assistant_msg})
+            recent_history = history[-20:] if len(history) > 20 else history  # Now we get individual messages, so double the limit
+            for msg in recent_history:
+                if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                    # New message format
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                elif isinstance(msg, (list, tuple)) and len(msg) == 2:
+                    # Backward compatibility with old tuple format
+                    user_msg, assistant_msg = msg
+                    if user_msg:
+                        messages.append({"role": "user", "content": user_msg})
+                    if assistant_msg:
+                        messages.append({"role": "assistant", "content": assistant_msg})
             
             # Handle file upload with size limits (only for current message)
             if uploaded_file is not None:
@@ -1549,7 +1976,7 @@ class ChatInterface:
             if context_size > 20000:
                 error_response = "❌ Context too large. Please start a new conversation or upload a smaller file."
                 print(f"❌ Context too large: {context_size} chars")
-                new_history = history + [[message, error_response]]
+                new_history = history + [{"role": "user", "content": message}, {"role": "assistant", "content": error_response}]
                 # Save session with error
                 self.session_manager.save_session(session_id, new_history, {
                     'system_prompt': system_prompt,
@@ -1594,7 +2021,7 @@ class ChatInterface:
             print(f"📝 Final cleaned response preview: {response[:200]}...")
             
             # Create new history entry
-            new_history = history + [[message, response]]
+            new_history = history + [{"role": "user", "content": message}, {"role": "assistant", "content": response}]
             print(f"🔄 UI DEBUG: Creating history entry:")
             print(f"   - User message: {len(message)} chars")
             print(f"   - Assistant response: {len(response)} chars")
@@ -1602,11 +2029,15 @@ class ChatInterface:
             
             # Validate the history structure
             try:
-                last_entry = new_history[-1]
-                if len(last_entry) != 2:
-                    print(f"⚠️ Invalid history entry format: {last_entry}")
+                if len(new_history) >= 2:
+                    user_msg = new_history[-2]
+                    assistant_msg = new_history[-1]
+                    if user_msg.get('role') == 'user' and assistant_msg.get('role') == 'assistant':
+                        print(f"✅ Valid history entry: [{len(user_msg.get('content', ''))} chars user, {len(assistant_msg.get('content', ''))} chars assistant]")
+                    else:
+                        print(f"⚠️ Invalid history entry format: {user_msg}, {assistant_msg}")
                 else:
-                    print(f"✅ Valid history entry: [{len(last_entry[0])} chars, {len(last_entry[1])} chars]")
+                    print("⚠️ Not enough history entries to validate")
             except Exception as e:
                 print(f"❌ History validation error: {e}")
             
@@ -1627,7 +2058,7 @@ class ChatInterface:
             print(f"💥 Exception: {error_msg}")
             print(f"🔍 Traceback: {traceback.format_exc()}")
             
-            new_history = history + [[message, error_msg]]
+            new_history = history + [{"role": "user", "content": message}, {"role": "assistant", "content": error_msg}]
             # Save session with error
             self.session_manager.save_session(session_id, new_history, {
                 'system_prompt': system_prompt,
@@ -1715,11 +2146,25 @@ class ChatInterface:
         
         export_text = f"# Chat Export - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
-        for i, (user, assistant) in enumerate(history):
-            export_text += f"## Message {i+1}\n\n"
-            export_text += f"**User:** {user}\n\n"
-            export_text += f"**Assistant:** {assistant}\n\n"
-            export_text += "---\n\n"
+        msg_count = 0
+        for i, msg in enumerate(history):
+            if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                # New message format
+                if msg['role'] == 'user':
+                    msg_count += 1
+                    export_text += f"## Message {msg_count}\n\n"
+                    export_text += f"**User:** {msg['content']}\n\n"
+                elif msg['role'] == 'assistant':
+                    export_text += f"**Assistant:** {msg['content']}\n\n"
+                    export_text += "---\n\n"
+            elif isinstance(msg, (list, tuple)) and len(msg) == 2:
+                # Backward compatibility with old tuple format
+                user, assistant = msg
+                msg_count += 1
+                export_text += f"## Message {msg_count}\n\n"
+                export_text += f"**User:** {user}\n\n"
+                export_text += f"**Assistant:** {assistant}\n\n"
+                export_text += "---\n\n"
         
         return export_text
     
@@ -1739,7 +2184,7 @@ class ChatInterface:
         test_response = "This is a test response to verify UI updates are working correctly. ✅"
         test_message = "UI Test"
         
-        new_history = history + [[test_message, test_response]]
+        new_history = history + [{"role": "user", "content": test_message}, {"role": "assistant", "content": test_response}]
         print(f"🔄 UI TEST: Added entry, total items: {len(new_history)}")
         
         return "", new_history, None
@@ -1823,9 +2268,8 @@ class ChatInterface:
         return prompt_name, self.system_prompts[prompt_name]
     
     def get_management_overview(self) -> str:
-        """Get comprehensive management overview"""
-        overview = "# 🎛️ Model Serving Management\n"
-        overview += f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        """Get comprehensive management overview with modern HTML styling"""
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         try:
             # Get all available information with error handling
@@ -1843,61 +2287,166 @@ class ChatInterface:
         except Exception as e:
             metrics_info = {'success': False, 'error': str(e)}
         
-        # Model Information Section
-        overview += "## 📊 Model Information\n"
+        # Start HTML with header
+        overview = f"""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; color: white;'>
+            <h2 style='margin: 0 0 10px 0; font-size: 1.5em; font-weight: 600;'>🎛️ Model Serving Management</h2>
+            <div style='font-size: 0.9em; opacity: 0.9;'>Last Updated: {timestamp}</div>
+        </div>
+        <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;'>
+        """
+        
+        # Model Information Card
         models_data = health_result.get('models', {})
-        if models_data.get('success'):
-            overview += f"**Status:** 🟢 Online\n"
-            overview += f"**Available Models:** {', '.join(models_data.get('available', []))}\n"
-            overview += f"**Active Model:** {models_data.get('configured', 'Unknown')}\n"
-        else:
-            overview += "**Status:** 🔴 Offline or Unavailable\n"
+        model_status = "🟢 Online" if models_data.get('success') else "🔴 Offline"
+        model_color = "#28a745" if models_data.get('success') else "#dc3545"
+        available_models = ', '.join(models_data.get('available', [])) if models_data.get('available') else 'No models available'
+        active_model = models_data.get('configured', 'Not configured')
         
-        # Server Health Section
-        overview += "\n## 🏥 Server Health\n"
+        # Debug output
+        print(f"DEBUG Models data: {models_data}")
+        print(f"DEBUG Available models: {available_models}")
+        print(f"DEBUG Active model: {active_model}")
+        
+        overview += f"""
+        <div style='background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #007bff;'>
+            <div style='display: flex; align-items: center; margin-bottom: 15px;'>
+                <div style='background: #007bff; color: white; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.2em;'>📊</div>
+                <h3 style='margin: 0; color: #333; font-size: 1.1em;'>Model Information</h3>
+            </div>
+            <div style='color: #666; line-height: 1.6;'>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Status:</strong> <span style='color: {model_color}; font-weight: 600;'>{model_status}</span></div>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Available Models:</strong> <span style='color: #555;'>{available_models}</span></div>
+                <div><strong style='color: #333;'>Active Model:</strong> <span style='color: #555;'>{active_model}</span></div>
+            </div>
+        </div>
+        """
+        
+        # Server Health Card
         health_data = health_result.get('health', {})
-        if health_data.get('success'):
-            overview += f"**Health Status:** ✅ Healthy\n"
-            overview += f"**Response Time:** {health_data.get('latency', 0)*1000:.0f}ms\n"
-        else:
-            overview += f"**Health Status:** ❌ Unhealthy\n"
-            overview += f"**Error:** {health_data.get('error', 'Unknown')}\n"
+        health_status = "✅ Healthy" if health_data.get('success') else "❌ Unhealthy"
+        health_color = "#28a745" if health_data.get('success') else "#dc3545"
+        response_time = f"{health_data.get('latency', 0)*1000:.0f}ms" if health_data.get('success') else "Connection failed"
+        error_msg = health_data.get('error', 'Unknown error') if not health_data.get('success') else None
         
-        # API Version Section
-        overview += "\n## 🔧 API Version\n"
+        # Debug output
+        print(f"DEBUG Health data: {health_data}")
+        print(f"DEBUG Health status: {health_status}")
+        print(f"DEBUG Response time: {response_time}")
+        
+        health_card = f"""
+        <div style='background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #28a745;'>
+            <div style='display: flex; align-items: center; margin-bottom: 15px;'>
+                <div style='background: #28a745; color: white; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.2em;'>🏥</div>
+                <h3 style='margin: 0; color: #333; font-size: 1.1em;'>Server Health</h3>
+            </div>
+            <div style='color: #666; line-height: 1.6;'>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Health Status:</strong> <span style='color: {health_color}; font-weight: 600;'>{health_status}</span></div>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Response Time:</strong> <span style='color: #555;'>{response_time}</span></div>"""
+        
+        if error_msg:
+            health_card += f"""
+                <div style='color: #dc3545; font-size: 0.9em; margin-top: 8px; padding: 8px; background: #f8d7da; border-radius: 4px;'><strong>Error:</strong> {error_msg}</div>"""
+        
+        health_card += """
+            </div>
+        </div>
+        """
+        overview += health_card
+        
+        # API Version Card
+        version_display = "Unable to retrieve"
+        version_details = []
         if version_info.get('success'):
             version_data = version_info.get('data', {})
             if isinstance(version_data, dict):
-                overview += f"**Version:** {version_data.get('version', 'Unknown')}\n"
+                raw_version = version_data.get('version', 'Version not reported')
+                version_display = str(raw_version).replace('<', '&lt;').replace('>', '&gt;').strip()
                 for key, value in version_data.items():
                     if key != 'version':
-                        overview += f"**{key.title()}:** {value}\n"
+                        # Sanitize key and value to prevent HTML injection
+                        safe_key = str(key).replace('<', '&lt;').replace('>', '&gt;').strip()
+                        safe_value = str(value).replace('<', '&lt;').replace('>', '&gt;').strip()
+                        version_details.append(f"<div style='margin-bottom: 4px;'><strong style='color: #333;'>{safe_key.title()}:</strong> <span style='color: #555;'>{safe_value}</span></div>")
             else:
-                overview += f"**Version Info:** {str(version_data)[:100]}...\n"
+                version_display = str(version_data)[:50] + "..." if len(str(version_data)) > 50 else str(version_data)
         else:
-            overview += "**Version:** Unable to retrieve\n"
+            version_error = version_info.get('error', 'Connection failed')
+            safe_error = str(version_error).replace('<', '&lt;').replace('>', '&gt;').strip()
+            version_details.append(f"<div style='color: #dc3545; font-size: 0.9em;'><strong>Error:</strong> {safe_error}</div>")
         
-        # Performance Metrics Summary
-        overview += "\n## 📈 Performance Summary\n"
+        # Debug output
+        print(f"DEBUG Version info: {version_info}")
+        print(f"DEBUG Version display: {version_display}")
+        print(f"DEBUG Version details: {version_details}")
+        
+        # Sanitize version_details to prevent HTML injection
+        import html
+        safe_version_details = []
+        for detail in version_details:
+            # Ensure it's a string and clean
+            detail_str = str(detail).strip()
+            safe_version_details.append(detail_str)
+        
+        print(f"DEBUG Safe version details: {safe_version_details}")
+        
+        overview += f"""
+        <div style='background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #6f42c1;'>
+            <div style='display: flex; align-items: center; margin-bottom: 15px;'>
+                <div style='background: #6f42c1; color: white; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.2em;'>🔧</div>
+                <h3 style='margin: 0; color: #333; font-size: 1.1em;'>API Version</h3>
+            </div>
+            <div style='color: #666; line-height: 1.6;'>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Version:</strong> <span style='color: #555;'>{str(version_display).strip()}</span></div>
+                {''.join(safe_version_details) if safe_version_details else ''}
+            </div>
+        </div>
+        """
+        
+        # Performance Summary Card
         chat_test = health_result.get('chat_test', {})
         streaming_test = health_result.get('streaming_test', {})
         
-        if chat_test.get('success'):
-            overview += f"**Chat API Latency:** {chat_test.get('latency', 0)*1000:.0f}ms\n"
-        else:
-            overview += "**Chat API:** ❌ Not responding\n"
-            
-        if streaming_test.get('success'):
-            overview += f"**Streaming Latency:** {streaming_test.get('latency', 0)*1000:.0f}ms\n"
-        else:
-            overview += "**Streaming:** ❌ Not available\n"
+        chat_latency = f"{chat_test.get('latency', 0)*1000:.0f}ms" if chat_test.get('success') else "Connection failed"
+        streaming_latency = f"{streaming_test.get('latency', 0)*1000:.0f}ms" if streaming_test.get('success') else "Not available"
         
-        # Configuration Summary
-        overview += "\n## ⚙️ Configuration\n"
-        overview += f"**API Endpoint:** `{self.config.api_endpoint}`\n"
-        overview += f"**Default Temperature:** {self.config.default_temperature}\n"
-        overview += f"**Default Max Tokens:** {self.config.default_max_tokens}\n"
-        overview += f"**Auto-Stream Threshold:** {self.config.auto_stream_threshold} chars\n"
+        # Debug output
+        print(f"DEBUG Chat test: {chat_test}")
+        print(f"DEBUG Streaming test: {streaming_test}")
+        print(f"DEBUG Chat latency: {chat_latency}")
+        print(f"DEBUG Streaming latency: {streaming_latency}")
+        
+        overview += f"""
+        <div style='background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #17a2b8;'>
+            <div style='display: flex; align-items: center; margin-bottom: 15px;'>
+                <div style='background: #17a2b8; color: white; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.2em;'>📈</div>
+                <h3 style='margin: 0; color: #333; font-size: 1.1em;'>Performance Summary</h3>
+            </div>
+            <div style='color: #666; line-height: 1.6;'>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Chat API Latency:</strong> <span style='color: #555;'>{chat_latency}</span></div>
+                <div><strong style='color: #333;'>Streaming Latency:</strong> <span style='color: #555;'>{streaming_latency}</span></div>
+            </div>
+        </div>
+        """
+        
+        # Configuration Card
+        overview += f"""
+        <div style='background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #fd7e14;'>
+            <div style='display: flex; align-items: center; margin-bottom: 15px;'>
+                <div style='background: #fd7e14; color: white; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.2em;'>⚙️</div>
+                <h3 style='margin: 0; color: #333; font-size: 1.1em;'>Configuration</h3>
+            </div>
+            <div style='color: #666; line-height: 1.6;'>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>API Endpoint:</strong> <code style='background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; color: #495057;'>{self.config.api_endpoint}</code></div>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Default Temperature:</strong> <span style='color: #555;'>{self.config.default_temperature}</span></div>
+                <div style='margin-bottom: 8px;'><strong style='color: #333;'>Default Max Tokens:</strong> <span style='color: #555;'>{self.config.default_max_tokens}</span></div>
+                <div><strong style='color: #333;'>Auto-Stream Threshold:</strong> <span style='color: #555;'>{self.config.auto_stream_threshold} chars</span></div>
+            </div>
+        </div>
+        """
+        
+        # Close grid container
+        overview += "</div>"
         
         return overview
     
@@ -1939,12 +2488,13 @@ class ChatInterface:
     
 
     def get_metrics_plots(self) -> Dict[str, Any]:
-        """Get HTML tables for each metric category"""
+        """Get enhanced dashboards for each vLLM metric category"""
         try:
-            print("🔍 Starting table generation...")
-            tables = {}
+            print("🔍 Starting enhanced dashboard generation...")
+            dashboards = {}
             
-            categories = ['memory', 'transactions', 'tokens', 'model']
+            # New vLLM-aligned categories
+            categories = ['server', 'request', 'tokens', 'cache', 'performance', 'model', 'http', 'system']
             
             # Check if we have any data at all
             total_metrics = len(self.metrics_collector.metrics_data)
@@ -1957,31 +2507,26 @@ class ChatInterface:
             
             if not has_data:
                 print("⚠️ No metrics data available. Start collection from model server to see data.")
-                no_data_html = "<p style='text-align: center; color: #666; padding: 40px;'>No metrics data available.<br>Start collection from model server to see data.</p>"
-                return {
-                    'memory': no_data_html,
-                    'transactions': no_data_html,
-                    'tokens': no_data_html,
-                    'model': no_data_html
-                }
+                no_data_html = "<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'><h3>📊 No Data Available</h3><p>Start metrics collection from the vLLM model server to see real-time dashboards.</p></div>"
+                return {category: no_data_html for category in categories}
             
             for category in categories:
                 print(f"\n🔧 Processing {category} category...")
                 try:
-                    # Get HTML table for category
-                    table_html = self.metrics_collector.create_time_series_plot(category)
-                    if table_html:
-                        tables[category] = table_html
-                        print(f"✅ {category} table created successfully")
+                    # Get enhanced dashboard for category
+                    dashboard_html = self.metrics_collector.create_enhanced_metrics_dashboard(category)
+                    if dashboard_html:
+                        dashboards[category] = dashboard_html
+                        print(f"✅ {category} dashboard created successfully")
                     else:
                         print(f"⚠️ No data for {category}")
-                        tables[category] = f"<p style='text-align: center; color: #666; padding: 40px;'>No {category} metrics available yet.</p>"
+                        dashboards[category] = f"<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'>No {category} metrics available yet.</div>"
                 except Exception as category_error:
-                    print(f"❌ Error creating {category} table: {str(category_error)}")
-                    tables[category] = f"<p style='text-align: center; color: red; padding: 40px;'>Error creating {category} table: {str(category_error)}</p>"
+                    print(f"❌ Error creating {category} dashboard: {str(category_error)}")
+                    dashboards[category] = f"<div style='text-align: center; color: red; padding: 40px; background: #fff5f5; border-radius: 8px; margin: 20px;'>Error creating {category} dashboard: {str(category_error)}</div>"
             
-            print(f"🎉 Table generation complete. Created {len(tables)} tables")
-            return tables
+            print(f"🎉 Dashboard generation complete. Created {len(dashboards)} dashboards")
+            return dashboards
             
         except Exception as e:
             error_msg = f"Critical error in table generation: {str(e)}"
@@ -2284,7 +2829,6 @@ class ChatInterface:
                 with gr.Column(scale=1):
                     load_session_btn = gr.Button("📂 Load Session", variant="secondary")
                     new_session_btn = gr.Button("🆕 New Session", variant="primary")
-                    list_sessions_btn = gr.Button("📋 List Sessions", variant="secondary")
             
             # Sessions list display (collapsible)
             with gr.Accordion("📂 Active Sessions", open=False) as sessions_accordion:
@@ -2312,7 +2856,7 @@ class ChatInterface:
                                 label="Conversation",
                                 height=700,
                                 elem_id="chatbot",
-                                type="tuples",
+                                type="messages",
                                 show_label=False,
                                 container=True,
                                 scale=1,
@@ -2353,52 +2897,61 @@ class ChatInterface:
                         
                         # Configuration sidebar - narrower
                         with gr.Column(scale=1, elem_classes="config-panel"):
-                            gr.Markdown("### ⚙️ Settings")
+                            gr.HTML("<h3 style='color: #333; margin: 10px 0;'>⚙️ Settings</h3>")
                             
-                            system_dropdown = gr.Dropdown(
-                                choices=list(self.system_prompts.keys()),
-                                value="Telco Expert",
-                                label="System Prompt",
-                                scale=1
-                            )
+                            # System Prompt Section
+                            with gr.Group():
+                                system_dropdown = gr.Dropdown(
+                                    choices=list(self.system_prompts.keys()),
+                                    value="Telco Expert",
+                                    label="System Prompt",
+                                    scale=1
+                                )
                             
-                            # Model parameters - always visible
-                            temperature = gr.Slider(
-                                minimum=0.0,
-                                maximum=1.0,
-                                value=self.config.default_temperature,
-                                step=0.1,
-                                label="🌡️ Temperature",
-                                scale=1,
-                                info="Controls randomness (0=focused, 1=creative)",
-                                interactive=True
-                            )
+                            # Model Parameters Section  
+                            gr.HTML("<h4 style='color: #555; margin: 15px 0 8px 0;'>🎛️ Model Parameters</h4>")
+                            with gr.Group():
+                                temperature = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    value=self.config.default_temperature,
+                                    step=0.1,
+                                    label="🌡️ Temperature",
+                                    scale=1,
+                                    info="Controls randomness (0=focused, 1=creative)",
+                                    interactive=True
+                                )
+                                
+                                max_tokens = gr.Slider(
+                                    minimum=100,
+                                    maximum=8192,
+                                    value=self.config.default_max_tokens,
+                                    step=100,
+                                    label="📏 Max Tokens",
+                                    scale=1,
+                                    info="Maximum response length",
+                                    interactive=True
+                                )
+                                
+                                # Parameter status display
+                                param_status = gr.Markdown(
+                                    f"**Current:** Temp={self.config.default_temperature} | Tokens={self.config.default_max_tokens}",
+                                    elem_id="param-status"
+                                )
                             
-                            max_tokens = gr.Slider(
-                                minimum=100,
-                                maximum=8192,
-                                value=self.config.default_max_tokens,
-                                step=100,
-                                label="📏 Max Tokens",
-                                scale=1,
-                                info="Maximum response length",
-                                interactive=True
-                            )
-                            
-                            # Parameter status display
-                            param_status = gr.Markdown(
-                                f"**Current:** Temp={self.config.default_temperature} | Tokens={self.config.default_max_tokens}",
-                                elem_id="param-status"
-                            )
-                            
-                            # Custom system prompt (always accessible)
-                            custom_system = gr.Textbox(
-                                label="🎯 Selected System Prompt Detail",
-                                placeholder="Override selected template with custom prompt...",
-                                lines=4,
-                                scale=1,
-                                info="To edit templates permanently, use the 📝 Prompt Manager tab."
-                            )
+                            # Custom Prompt Section - stretched to fill remaining space
+                            gr.HTML("<h4 style='color: #555; margin: 15px 0 8px 0;'>📝 Prompt Override</h4>")
+                            with gr.Group():
+                                custom_system = gr.Textbox(
+                                    label="🎯 Selected System Prompt Detail",
+                                    placeholder="Override selected template with custom prompt...",
+                                    lines=12,
+                                    max_lines=20,
+                                    scale=1,
+                                    show_copy_button=True,
+                                    info="To edit templates permanently, use the 📝 Prompt Manager tab.",
+                                    elem_classes="system-prompt-detail"
+                                )
                 
                 # Additional tabs for better organization
                 with gr.TabItem("🎛️ Management"):
@@ -2459,31 +3012,63 @@ class ChatInterface:
                                             max_lines=1
                                         )
                                 
-                                # Visual metrics plots organized by category
+                                # Enhanced vLLM metrics dashboard organized by category
                                 with gr.Row():
                                     with gr.Tabs():
-                                        with gr.TabItem("🧠 Memory", elem_classes="metrics-tab"):
-                                            memory_plot = gr.HTML(
-                                                label="Memory Metrics Table",
-                                                elem_id="memory-table"
+                                        with gr.TabItem("🖥️ Server Engine", elem_classes="metrics-tab"):
+                                            server_dashboard = gr.HTML(
+                                                label="Server-Level Engine Metrics",
+                                                elem_id="server-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load server metrics</div>"
                                             )
                                         
-                                        with gr.TabItem("🔄 Transactions", elem_classes="metrics-tab"):
-                                            transactions_plot = gr.HTML(
-                                                label="Transaction Metrics Table",
-                                                elem_id="transaction-table"
+                                        with gr.TabItem("📋 Request Lifecycle", elem_classes="metrics-tab"):
+                                            request_dashboard = gr.HTML(
+                                                label="Request Lifecycle & Latency Metrics",
+                                                elem_id="request-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load request metrics</div>"
                                             )
                                         
-                                        with gr.TabItem("🎯 Tokens", elem_classes="metrics-tab"):
-                                            tokens_plot = gr.HTML(
-                                                label="Token Metrics Table",
-                                                elem_id="token-table"
+                                        with gr.TabItem("🎯 Token Processing", elem_classes="metrics-tab"):
+                                            tokens_dashboard = gr.HTML(
+                                                label="Token Processing Metrics",
+                                                elem_id="tokens-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load token metrics</div>"
                                             )
                                         
-                                        with gr.TabItem("⚙️ Model", elem_classes="metrics-tab"):
-                                            model_plot = gr.HTML(
-                                                label="Model Performance Table",
-                                                elem_id="model-table"
+                                        with gr.TabItem("💾 Cache & Memory", elem_classes="metrics-tab"):
+                                            cache_dashboard = gr.HTML(
+                                                label="Cache & GPU Memory Metrics",
+                                                elem_id="cache-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load cache metrics</div>"
+                                            )
+                                        
+                                        with gr.TabItem("⚡ Performance", elem_classes="metrics-tab"):
+                                            performance_dashboard = gr.HTML(
+                                                label="System Performance Metrics",
+                                                elem_id="performance-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load performance metrics</div>"
+                                            )
+                                        
+                                        with gr.TabItem("🧠 Model State", elem_classes="metrics-tab"):
+                                            model_dashboard = gr.HTML(
+                                                label="Model & LoRA Metrics",
+                                                elem_id="model-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load model metrics</div>"
+                                            )
+                                        
+                                        with gr.TabItem("🌐 HTTP Server", elem_classes="metrics-tab"):
+                                            http_dashboard = gr.HTML(
+                                                label="HTTP/Web Server Metrics",
+                                                elem_id="http-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load HTTP metrics</div>"
+                                            )
+                                        
+                                        with gr.TabItem("⚙️ System Runtime", elem_classes="metrics-tab"):
+                                            system_dashboard = gr.HTML(
+                                                label="System Resource Metrics",
+                                                elem_id="system-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load system metrics</div>"
                                             )
                                 
                                 # Archive management section
@@ -2553,7 +3138,7 @@ class ChatInterface:
                             )
                             
                             with gr.Row():
-                                refresh_sessions_btn = gr.Button("🔄 Refresh Sessions", variant="secondary")
+                                list_sessions_btn = gr.Button("📋 List Sessions", variant="primary")
                                 cleanup_sessions_btn = gr.Button("🧹 Cleanup Expired", variant="secondary")
                 
                 with gr.TabItem("📝 Prompt Manager"):
@@ -2620,7 +3205,14 @@ class ChatInterface:
                 if not history:
                     return f"**Context:** Ready | **Mode:** Direct | **Temp:** {temp} | **Tokens:** {tokens}"
                 
-                total_chars = sum(len(h[0]) + len(h[1]) for h in history) + len(message or "")
+                # Calculate total characters with support for both formats
+                total_chars = 0
+                for h in history:
+                    if isinstance(h, dict) and 'content' in h:
+                        total_chars += len(h['content'])
+                    elif isinstance(h, (list, tuple)) and len(h) == 2:
+                        total_chars += len(h[0]) + len(h[1])
+                total_chars += len(message or "")
                 mode = "🌊 Streaming" if total_chars > 4000 else "⚡ Direct"
                 return f"**Context:** {total_chars} chars | **Mode:** {mode} | **Temp:** {temp} | **Tokens:** {tokens}"
             
@@ -2726,9 +3318,9 @@ class ChatInterface:
                     return f"❌ Error updating interval: {str(e)}"
             
             def refresh_metrics_plots():
-                """Refresh all metrics tables with archive loading if needed"""
+                """Refresh all enhanced metrics dashboards with archive loading if needed"""
                 try:
-                    print("🔄 Refreshing metrics tables...")
+                    print("🔄 Refreshing enhanced metrics dashboards...")
                     
                     # Check if we have any data, if not try to load from archive
                     total_metrics = len(self.metrics_collector.metrics_data)
@@ -2745,35 +3337,48 @@ class ChatInterface:
                         except Exception as archive_e:
                             print(f"⚠️ Archive load failed: {str(archive_e)}")
                     
-                    tables = self.get_metrics_plots()
+                    dashboards = self.get_metrics_plots()
                     
-                    print(f"📊 Retrieved tables: {list(tables.keys())}")
+                    print(f"📊 Retrieved dashboards: {list(dashboards.keys())}")
                     
-                    memory_table = tables.get('memory')
-                    transactions_table = tables.get('transactions')
-                    tokens_table = tables.get('tokens')
-                    model_table = tables.get('model')
+                    # Extract dashboards for the new 8 categories
+                    server_dash = dashboards.get('server')
+                    request_dash = dashboards.get('request')
+                    tokens_dash = dashboards.get('tokens')
+                    cache_dash = dashboards.get('cache')
+                    performance_dash = dashboards.get('performance')
+                    model_dash = dashboards.get('model')
+                    http_dash = dashboards.get('http')
+                    system_dash = dashboards.get('system')
                     
-                    print(f"🧠 Memory table: {'✅ Present' if memory_table else '❌ None'}")
-                    print(f"🔄 Transactions table: {'✅ Present' if transactions_table else '❌ None'}")
-                    print(f"🎯 Tokens table: {'✅ Present' if tokens_table else '❌ None'}")
-                    print(f"⚙️ Model table: {'✅ Present' if model_table else '❌ None'}")
+                    print(f"🖥️ Server dashboard: {'✅ Present' if server_dash else '❌ None'}")
+                    print(f"📋 Request dashboard: {'✅ Present' if request_dash else '❌ None'}")
+                    print(f"🎯 Tokens dashboard: {'✅ Present' if tokens_dash else '❌ None'}")
+                    print(f"💾 Cache dashboard: {'✅ Present' if cache_dash else '❌ None'}")
+                    print(f"⚡ Performance dashboard: {'✅ Present' if performance_dash else '❌ None'}")
+                    print(f"🧠 Model dashboard: {'✅ Present' if model_dash else '❌ None'}")
+                    print(f"🌐 HTTP dashboard: {'✅ Present' if http_dash else '❌ None'}")
+                    print(f"⚙️ System dashboard: {'✅ Present' if system_dash else '❌ None'}")
                     
                     metrics_summary = self.get_detailed_metrics()
                     
                     return (
-                        memory_table,
-                        transactions_table, 
-                        tokens_table,
-                        model_table,
+                        server_dash,
+                        request_dash, 
+                        tokens_dash,
+                        cache_dash,
+                        performance_dash,
+                        model_dash,
+                        http_dash,
+                        system_dash,
                         metrics_summary
                     )
                 except Exception as e:
-                    print(f"💥 Error in refresh_metrics_tables: {str(e)}")
+                    print(f"💥 Error in refresh_metrics_dashboards: {str(e)}")
                     import traceback
                     print(f"Traceback: {traceback.format_exc()}")
-                    error_html = f"<p style='text-align: center; color: red; padding: 40px;'>Error refreshing tables: {str(e)}</p>"
-                    return error_html, error_html, error_html, error_html, f"Error refreshing tables: {str(e)}"
+                    error_html = f"<div style='text-align: center; color: red; padding: 40px; background: #fff5f5; border-radius: 8px; margin: 20px;'>Error refreshing dashboards: {str(e)}</div>"
+                    return (error_html, error_html, error_html, error_html, error_html, error_html, error_html, error_html, f"Error refreshing dashboards: {str(e)}")
             
             
             
@@ -2970,10 +3575,11 @@ class ChatInterface:
             )
             
             
-            # Manual refresh plots
+            # Manual refresh plots for enhanced dashboard
             refresh_plots_btn.click(
                 refresh_metrics_plots,
-                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, metrics_output]
+                outputs=[server_dashboard, request_dashboard, tokens_dashboard, cache_dashboard, 
+                        performance_dashboard, model_dashboard, http_dashboard, system_dashboard, metrics_output]
             )
             
             
@@ -3004,7 +3610,8 @@ class ChatInterface:
             plots_timer = gr.Timer(15, active=False)
             plots_timer.tick(
                 refresh_metrics_plots,
-                outputs=[memory_plot, transactions_plot, tokens_plot, model_plot, metrics_output]
+                outputs=[server_dashboard, request_dashboard, tokens_dashboard, cache_dashboard, 
+                        performance_dashboard, model_dashboard, http_dashboard, system_dashboard, metrics_output]
             )
             
             # Auto-load data on interface load
@@ -3042,19 +3649,34 @@ class ChatInterface:
                     except Exception as e:
                         metrics = f"## ❌ Error Loading Metrics\n\n{str(e)}"
                     
-                    # Get initial plots if we have data
-                    memory_fig, transactions_fig, tokens_fig, model_fig = None, None, None, None
+                    # Get initial enhanced dashboards if we have data
+                    server_dash = request_dash = tokens_dash = cache_dash = None
+                    performance_dash = model_dash = http_dash = system_dash = None
+                    
                     if archived_metrics > 0:
                         try:
-                            plots = self.get_metrics_plots()
-                            if "error" not in plots:
-                                memory_fig = plots.get('memory')
-                                transactions_fig = plots.get('transactions')
-                                tokens_fig = plots.get('tokens')
-                                model_fig = plots.get('model')
-                                print("✅ Initial plots loaded successfully")
+                            print("🎨 Generating initial enhanced dashboards...")
+                            dashboards = self.get_metrics_plots()
+                            server_dash = dashboards.get('server', '<div>No server data</div>')
+                            request_dash = dashboards.get('request', '<div>No request data</div>')
+                            tokens_dash = dashboards.get('tokens', '<div>No tokens data</div>')
+                            cache_dash = dashboards.get('cache', '<div>No cache data</div>')
+                            performance_dash = dashboards.get('performance', '<div>No performance data</div>')
+                            model_dash = dashboards.get('model', '<div>No model data</div>')
+                            http_dash = dashboards.get('http', '<div>No HTTP data</div>')
+                            system_dash = dashboards.get('system', '<div>No system data</div>')
+                            print("✅ Initial enhanced dashboards loaded successfully")
                         except Exception as e:
-                            print(f"⚠️ Initial plot loading failed: {str(e)}")
+                            print(f"⚠️ Initial dashboard loading failed: {str(e)}")
+                            # Set default placeholders
+                            default_placeholder = "<div style='text-align: center; padding: 40px; color: #666;'>Loading metrics data...</div>"
+                            server_dash = request_dash = tokens_dash = cache_dash = default_placeholder
+                            performance_dash = model_dash = http_dash = system_dash = default_placeholder
+                    else:
+                        # No archived data - set loading placeholders  
+                        loading_placeholder = "<div style='text-align: center; padding: 40px; color: #666;'>No metrics data available. Start collection or refresh to load data.</div>"
+                        server_dash = request_dash = tokens_dash = cache_dash = loading_placeholder
+                        performance_dash = model_dash = http_dash = system_dash = loading_placeholder
                     
                     # Initial collection status
                     archive_msg = ""
@@ -3062,7 +3684,7 @@ class ChatInterface:
                         archive_msg = f" (📦 Loaded {archived_metrics} archived metrics)"
                         collection_msg = f"✅ Interface loaded with {archived_metrics} metrics{archive_msg}"
                     else:
-                        collection_msg = "🔄 Interface loaded - no archived data found"
+                        collection_msg = "🔄 Interface loaded - start collection to see metrics"
                     
                     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     
@@ -3072,19 +3694,26 @@ class ChatInterface:
                         capabilities,
                         timestamp,
                         collection_msg,
-                        memory_fig,
-                        transactions_fig,
-                        tokens_fig,
-                        model_fig
+                        server_dash,
+                        request_dash,
+                        tokens_dash,
+                        cache_dash,
+                        performance_dash,
+                        model_dash,
+                        http_dash,
+                        system_dash
                     )
                     
                 except Exception as e:
                     print(f"❌ Auto-load failed: {str(e)}")
                     error_msg = f"❌ Interface load error: {str(e)}"
+                    error_dash = "<div style='text-align: center; color: red; padding: 40px;'>Error loading dashboard</div>"
                     return (
                         error_msg, error_msg, error_msg, 
                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        error_msg, None, None, None, None
+                        error_msg, 
+                        error_dash, error_dash, error_dash, error_dash,
+                        error_dash, error_dash, error_dash, error_dash
                     )
             
             # Legacy function for backward compatibility  
@@ -3103,27 +3732,31 @@ class ChatInterface:
                     self.metrics_collector.start_collection(self.client)
                     
                     # Generate initial tables
-                    tables = self.get_metrics_plots()
+                    dashboards = self.get_metrics_plots()
                     
                     status_message = f"⚡ Auto-started metrics collection{archive_msg}"
                     
                     return (
-                        tables.get('memory'),
-                        tables.get('transactions'), 
-                        tables.get('tokens'),
-                        tables.get('model'),
-                        status_message,
+                        overview, 
                         self.get_detailed_metrics(),
-                        f"Archive loaded: {archived_metrics} metrics, {archived_timestamps} timestamps"
+                        capabilities,
+                        timestamp,
+                        status_message,
+                        dashboards.get('server', '<div>No server dashboard</div>'),
+                        dashboards.get('request', '<div>No request dashboard</div>'), 
+                        dashboards.get('tokens', '<div>No tokens dashboard</div>'),
+                        dashboards.get('cache', '<div>No cache dashboard</div>')
                     )
                 except Exception as e:
-                    return None, None, None, None, f"❌ Auto-start failed: {str(e)}", str(e), "Archive load failed"
+                    error_dash = f"<div style='text-align: center; color: red; padding: 40px;'>Error loading dashboard: {str(e)}</div>"
+                    return None, f"❌ Auto-start failed: {str(e)}", str(e), "Archive load failed", "Not started", error_dash, error_dash, error_dash, error_dash
             
             # Initialize interface data on startup
             interface.load(
                 auto_load_interface_data,
                 outputs=[management_overview, metrics_output, capabilities_output, last_update_display, 
-                         collection_status, memory_plot, transactions_plot, tokens_plot, model_plot]
+                         collection_status, server_dashboard, request_dashboard, tokens_dashboard, cache_dashboard,
+                         performance_dashboard, model_dashboard, http_dashboard, system_dashboard]
             )
             
             # Auto-refresh functionality with timer
@@ -3337,10 +3970,6 @@ class ChatInterface:
                 outputs=[sessions_display, sessions_info, sessions_accordion, session_dropdown]
             )
             
-            refresh_sessions_btn.click(
-                list_sessions_handler,
-                outputs=[sessions_display, sessions_info, sessions_accordion, session_dropdown]
-            )
             
             cleanup_sessions_btn.click(
                 cleanup_sessions_handler,
