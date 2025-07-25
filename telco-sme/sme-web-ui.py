@@ -2805,10 +2805,26 @@ class ChatInterface:
         /* Better code block styling */
         .message pre {
             background-color: #f4f4f4 !important;
+            color: #333333 !important;
             padding: 12px !important;
             border-radius: 6px !important;
             overflow-x: auto !important;
             max-width: 100% !important;
+        }
+        
+        /* Ensure code within pre blocks is visible */
+        .message pre code {
+            color: #333333 !important;
+            background-color: transparent !important;
+        }
+        
+        /* Style inline code */
+        .message code {
+            background-color: #f4f4f4 !important;
+            color: #333333 !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            font-size: 0.9em !important;
         }
         
         /* Improve button spacing */
