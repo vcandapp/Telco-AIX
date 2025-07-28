@@ -1,6 +1,5 @@
-Question: 5G cell site with 100MHz bandwidth, 256 QAM modulation, 4x4 MIMO. Current average throughput is 1.2 Gbps with 65% PRB utilization. Predict capacity requirements for 40% YoY growth over 3 years.
+Question: 5G cell site with 100MHz bandwidth, 256 QAM modulation, 4x4 MIMO. Current average throughput is 1.2 Gbps with 65% PRB utilization. Predict capacity requirements for 40% YoY growth over 3 years. <br>
 
-Answer:
 5G Cell Site Capacity Planning for 40% YoY Growth Over 3 Years
 1. Current Network Parameters
 Bandwidth: 100 MHz
@@ -8,6 +7,7 @@ Modulation: 256 QAM (8 bits/s/Hz)
 MIMO: 4x4 (4 spatial streams)
 Average Throughput: 1.2 Gbps
 PRB Utilization: 65%
+
 2. Current Peak Capacity Calculation
 The peak capacity is derived from the average throughput and PRB utilization:
 Peak Capacity
@@ -33,49 +33,17 @@ Average Throughput
 
 3. Projected Traffic Growth
 With 40% annual growth over 3 years:
-Growth Factor
-=
-(
-1
-+
-0.4
-)
-3
-=
-2.744
-Projected Average Throughput
-=
-1.2
-Gbps
-×
-2.744
-≈
-3.293
-Gbps
-Growth Factor=(1+0.4) 
-3
- =2.744Projected Average Throughput=1.2Gbps×2.744≈3.293Gbps
+Growth Factor = ( 1 + 0.4 ) 3 = 2.744
+Projected Average Throughput = 1.2 Gbps × 2.744 ≈ 3.293 Gbps
+Growth Factor=(1+0.4) 3 =2.744Projected Average Throughput=1.2Gbps×2.744≈3.293Gbps
 
 4. Required Peak Capacity
 To maintain 65% PRB utilization at the projected average:
-Required Peak Capacity
-=
-3.293
-Gbps
-0.65
-≈
-5.066
-Gbps
-Required Peak Capacity= 
-0.65
-3.293Gbps
-​
- ≈5.066Gbps
+Required Peak Capacity = 3.293 Gbps 0.65 ≈ 5.066 Gbps
+Required Peak Capacity=  0.65 3.293Gbps ≈5.066Gbps
 
 5. Capacity Upgrade Options
-To meet 5.066 Gbps peak capacity, consider the following upgrades:
-
-Parameter	Current	Upgrade Option	Impact on Capacity
+To meet 5.066 Gbps peak capacity, consider the following upgrades: Parameter	Current	Upgrade Option	Impact on Capacity
 Bandwidth	100 MHz	200 MHz (x2)	3.692 Gbps (peak)
 Modulation	256 QAM	1024 QAM (x1.25)	2.307 Gbps (peak)
 MIMO	4x4	8x8 (x2)	3.692 Gbps (peak)
@@ -84,22 +52,7 @@ Combined Upgrade	-	200 MHz + 8x8 MIMO	7.384 Gbps (peak)
 Bandwidth Expansion: Increase to 200 MHz (if spectrum is available).
 MIMO Enhancement: Upgrade to 8x8 MIMO for spatial multiplexing gains.
 Modulation: Retain 256 QAM unless SNR allows 1024 QAM (requires better signal quality).
-Resulting Peak Capacity:
-1.846
-Gbps
-×
-2
-(
-Bandwidth
-)
-×
-2
-(
-MIMO
-)
-=
-7.384
-Gbps
+Resulting Peak Capacity: 1.846 Gbps × 2 ( Bandwidth ) × 2 ( MIMO ) = 7.384 Gbps
 1.846Gbps×2(Bandwidth)×2(MIMO)=7.384Gbps
 
 7. Vendor-Specific Solutions
