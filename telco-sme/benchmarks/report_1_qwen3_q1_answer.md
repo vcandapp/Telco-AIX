@@ -1,3 +1,5 @@
+Judge Model: Claude Opus 4
+
 Evaluation of Question 1 Response
 Scoring:
 Question #1: Fault Detection (Basic)
