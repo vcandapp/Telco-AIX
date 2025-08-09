@@ -149,6 +149,16 @@ Serving Selected Model Qwen3-32B Full Model that runs on RHOAI-ModelServing with
 - **Session Loading**: Verify session ID format (8 characters)
 - **Prompt Errors**: Validate JSON syntax in system_prompts.json
 - **Performance**: Reduce context size or max tokens for faster responses
+- **Model Download Issues**: Create a DockerHub Access Secret and Attach to Default Service Account
+```
+oc create secret docker-registry dockerhub-secret \
+  --docker-server=docker.io \
+  --docker-username=your_docker_username \
+  --docker-password='YOUR_NEW_PAT_HERE' \
+  --docker-email=your-email@example.com
+
+oc patch serviceaccount default -p '{"imagePullSecrets": [{"name": "dockerhub-secret"}]}'
+```
 
 ### Diagnostics
 1. Go to "🔧 Diagnostics" tab
