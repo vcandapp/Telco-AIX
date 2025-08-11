@@ -33,18 +33,6 @@ Welcome to the **Telco-AIX** collaborative experimental workspace –> where we 
 Explore our curated models and datasets:
 [Telco-AIX on HuggingFace](https://huggingface.co/collections/fenar/telco-aix-66737384ab5687fe3d9a4b94)
 
-## Team
-
-| **Role** | **Name** | **LinkedIn** | **Region** |
-|----------|----------|--------------|------------|
-| **Maintainer** | Alessandro Arrichiello | [Profile](https://www.linkedin.com/in/alessandroarrichiello/) | EMEA |
-| **Maintainer** | Ali Bokhari | [Profile](https://www.linkedin.com/in/ali-bokhari/) | North America |
-| **Maintainer** | Atul Deshpande | [Profile](https://www.linkedin.com/in/atulrdeshpande/) | APAC |
-| **Program Manager** | Arun Thomas | [Profile](https://www.linkedin.com/in/arun-thomas-17a49359/) | Texas |
-| **Business Development** | Paul Lancaster | [Profile](https://www.linkedin.com/in/paullancaster/) | North America |
-| **Business Development** | Sankar Panneerselvam | [Profile](https://www.linkedin.com/in/sankarpanneerselvam-mba/) | Texas |
-| **Founder** | Fatih E. NAR | [Profile](https://www.linkedin.com/in/fenar/) | Texas |
-
 ## Published Works
 
 | Title | Platform | Link | Key Authors |
