@@ -49,6 +49,7 @@ Explore our curated models and datasets:
 
 | Title | Platform | Link | Key Authors |
 |-------|----------|------|-------------|
+| The AI Engine | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxviii-the-ai-engine-is-ready-but-wheres-the-rest-05b7d3d25fd0) |Tushar Katarki, Fatih E. Nar, William Caban |
 | Lessons Learned from a Telco MCP BackEnd Experiments | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxvii-lessons-learned-from-a-telco-mcp-backend-experiments-bf14d90b1e6a) |Ian Hood, Robert Shaw, Fatih E. Nar |
 | Satisfaction is All You Need! | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxv-satisfaction-is-all-you-need-9ff145d68385) | Fatih E. Nar, Ian Hood, Ranny Haiby et al. |
 | Artificially Intelligent Platform Interface (AI-PI) | Medium | [Read Article](https://medium.com/open-5g-hypercore/episode-xxiv-artificially-intelligent-platform-interface-667f44dcecf1) | Fatih E. Nar, Ian Hood, Shujaur Mufti et al. |
