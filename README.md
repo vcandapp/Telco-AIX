@@ -54,4 +54,4 @@ Explore our curated models and datasets:
 
 **🌟 Join Our AI Revolution in Telecommunications!** 
 
-Interested in cutting-edge AI applications for telecom? Reach out, collaborate, and help shape the future of intelligent networking.
+Interested in cutting-edge AI applications for telecom? [Reach out, collaborate](https://www.linkedin.com/in/fenar/), and help shape the future of intelligent networking.
