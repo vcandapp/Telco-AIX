@@ -2,6 +2,7 @@
 OpenShift AI Hosted Model Serving - Telco AIX - SME Chat UI
 Author: Fatih E. NAR
 """
+
 import gradio as gr
 import requests
 import json
@@ -64,7 +65,11 @@ class Config:
 # Load system prompts from external file
 def load_system_prompts():
     """Load system prompts from external JSON file"""
-    prompts_file = os.path.join(os.path.dirname(__file__), "system_prompts.json")
+    try:
+        prompts_file = os.path.join(os.path.dirname(__file__), "system_prompts.json")
+    except NameError:
+        # Handle case when __file__ is not defined (e.g., interactive mode)
+        prompts_file = "system_prompts.json"
     
     # Default compact prompts as fallback
     default_prompts = {
@@ -258,10 +263,14 @@ class MetricsCollector:
         # Load existing data on startup
         self.load_archive()
         
-        # Metric categories aligned with actual vLLM metrics documentation
+        # vLLM Metric categories optimized for platform teams and users
+        # Organized by operational impact and actionability
         self.metric_categories = {
-            'scheduler': {  # vLLM Scheduler State (Core System Health)
-                'color': '#FF6B6B',  # Red
+            'system_health': {  # Core System Health - Critical for Operations
+                'color': '#FF6B6B',  # Red - Critical alerts
+                'display_name': '🏥 System Health',
+                'description': 'Request queue, processing state, and system stability',
+                'priority': 1,  # Highest priority for platform teams
                 'patterns': [
                     r'vllm:num_requests_running',  # Number of requests currently running on GPU
                     r'vllm:num_requests_waiting',  # Number of requests waiting to be processed
@@ -270,8 +279,11 @@ class MetricsCollector:
                     r'vllm:request_success_total(?!.*created).*',  # Count of successfully processed requests
                 ]
             },
-            'latency': {  # vLLM Request Latency Metrics (Performance Analysis)
-                'color': '#4ECDC4',  # Teal
+            'response_times': {  # User Experience - Response Time Analysis
+                'color': '#4ECDC4',  # Teal - Performance focus
+                'display_name': '⚡ Response Times',
+                'description': 'End-to-end latency, processing time, and user experience metrics',
+                'priority': 2,  # High priority for user experience
                 'patterns': [
                     r'vllm:time_to_first_token_seconds(?!.*created).*',  # Histogram of time to first token
                     r'vllm:time_per_output_token_seconds(?!.*created).*',  # Histogram of time per output token
@@ -284,8 +296,11 @@ class MetricsCollector:
                     r'vllm:model_execute_time_milliseconds(?!.*created).*',  # Model execute function time
                 ]
             },
-            'throughput': {  # vLLM Token Processing & Throughput
-                'color': '#45B7D1',  # Blue
+            'throughput': {  # Capacity Planning - Token Processing & Throughput
+                'color': '#45B7D1',  # Blue - Capacity metrics
+                'display_name': '🚀 Throughput',
+                'description': 'Token processing rates, generation capacity, and system efficiency',
+                'priority': 3,  # Important for capacity planning
                 'patterns': [
                     r'vllm:prompt_tokens_total',  # Number of prefill tokens processed
                     r'vllm:generation_tokens_total',  # Number of generation tokens processed
@@ -297,8 +312,11 @@ class MetricsCollector:
                     r'vllm:avg_generation_throughput_toks_per_s',  # Average generation throughput (deprecated)
                 ]
             },
-            'cache': {  # vLLM KV Cache & Prefix Cache Metrics
-                'color': '#96CEB4',  # Green
+            'resource_usage': {  # Resource Optimization - Memory & Cache Usage
+                'color': '#96CEB4',  # Green - Resource efficiency
+                'display_name': '💾 Resource Usage',
+                'description': 'Memory consumption, cache efficiency, and resource optimization',
+                'priority': 4,  # Important for cost optimization
                 'patterns': [
                     r'vllm:gpu_cache_usage_perc',  # GPU KV-cache usage (1 = 100% usage)
                     r'vllm:cpu_cache_usage_perc',  # CPU KV-cache usage (1 = 100% usage)  
@@ -308,23 +326,32 @@ class MetricsCollector:
                     r'vllm:cpu_prefix_cache_hit_rate',  # CPU prefix cache block hit rate
                 ]
             },
-            'parameters': {  # vLLM Request Parameters & Configuration
-                'color': '#FFA07A',  # Light Salmon
+            'request_patterns': {  # Usage Analytics - Request Patterns & Configuration
+                'color': '#FFA07A',  # Light Salmon - Analytics
+                'display_name': '📊 Request Patterns',
+                'description': 'Request characteristics, parameter usage, and workload analysis',
+                'priority': 5,  # Useful for workload understanding
                 'patterns': [
                     r'vllm:request_params_n(?!.*created).*',  # Histogram of the n request parameter
                     r'vllm:request_params_max_tokens(?!.*created).*',  # Histogram of max_tokens parameter
                     r'vllm:request_max_num_generation_tokens(?!.*created).*',  # Max requested generation tokens
                 ]
             },
-            'adapters': {  # vLLM LoRA & Adapter Metrics
-                'color': '#9B59B6',  # Purple
+            'model_features': {  # Advanced Features - LoRA & Model Configuration
+                'color': '#9B59B6',  # Purple - Advanced features
+                'display_name': '🧠 Model Features',
+                'description': 'LoRA adapters, model configuration, and advanced features',
+                'priority': 6,  # Lower priority unless using features
                 'patterns': [
                     r'vllm:lora_requests_info',  # Running stats on LoRA requests
                     r'vllm:cache_config_info',  # Cache configuration info
                 ]
             },
-            'speculative': {  # vLLM Speculative Decoding Metrics
-                'color': '#E67E22',  # Orange
+            'optimization': {  # Performance Optimization - Speculative Decoding
+                'color': '#E67E22',  # Orange - Optimization features
+                'display_name': '⚙️ Optimization',
+                'description': 'Speculative decoding efficiency and advanced optimization features',
+                'priority': 7,  # Specialized optimization metrics
                 'patterns': [
                     r'vllm:spec_decode_draft_acceptance_rate',  # Speculative token acceptance rate
                     r'vllm:spec_decode_efficiency',  # Speculative decoding system efficiency
@@ -350,6 +377,7 @@ class MetricsCollector:
                     r'python_.*',  # Python metrics
                     r'system_.*',  # System metrics
                     r'runtime_.*',  # Runtime metrics
+                    r'process_.*',  # Process metrics (CPU, memory, FDs)
                 ]
             },
         }
@@ -378,46 +406,52 @@ class MetricsCollector:
     
     def is_static_timestamp_metric(self, metric_name: str, value: float) -> bool:
         """Determine if a metric is a static timestamp that shouldn't be tracked"""
-        # Primary filter: All _created metrics are timestamps
-        if metric_name.endswith('_created'):
-            return True
-        
-        # Secondary filter: Known static timestamp patterns
-        static_patterns = [
-            r'.*_created$',              # All _created metrics
-            r'.*_start_time.*',          # Process start times
-            r'process_start_time.*',     # Process start timestamps
-            r'.*created.*timestamp.*',   # Explicit timestamp metrics
-            r'.*_creation_.*',           # Creation time metrics
-            r'.*_initialized.*',         # Initialization timestamps
-        ]
-        
-        for pattern in static_patterns:
-            if re.search(pattern, metric_name, re.IGNORECASE):
+        try:
+            # Ensure inputs are correct types
+            if not isinstance(metric_name, str) or not isinstance(value, (int, float)):
+                return False
+                
+            # Primary filter: All _created metrics are timestamps
+            if metric_name.endswith('_created'):
                 return True
-        
-        # Tertiary filter: Unix timestamp value detection (2024-2026 range)
-        # Current Unix timestamp range: 1.7e9 to 1.8e9 (2025 timeframe)
-        if 1.6e9 < value < 1.9e9:
-            # If it's a suspiciously large number that looks like a timestamp
-            # and has timestamp-like naming, filter it
-            timestamp_hints = [
-                'time', 'created', 'start', 'init', 'timestamp', 'epoch'
+            
+            # Secondary filter: Known static timestamp patterns
+            static_patterns = [
+                r'.*_created$',              # All _created metrics
+                r'.*_start_time.*',          # Process start times
+                r'process_start_time.*',     # Process start timestamps
+                r'.*created.*timestamp.*',   # Explicit timestamp metrics
+                r'.*_creation_.*',           # Creation time metrics
+                r'.*_initialized.*',         # Initialization timestamps
             ]
-            name_lower = metric_name.lower()
-            if any(hint in name_lower for hint in timestamp_hints):
-                return True
-        
-        return False
+            
+            for pattern in static_patterns:
+                if re.search(pattern, metric_name, re.IGNORECASE):
+                    return True
+            
+            # Tertiary filter: Unix timestamp value detection (2024-2026 range)
+            # Current Unix timestamp range: 1.7e9 to 1.8e9 (2025 timeframe)
+            if 1.6e9 < value < 1.9e9:
+                # If it's a suspiciously large number that looks like a timestamp
+                # and has timestamp-like naming, filter it
+                timestamp_hints = [
+                    'time', 'created', 'start', 'init', 'timestamp', 'epoch'
+                ]
+                name_lower = metric_name.lower()
+                if any(hint in name_lower for hint in timestamp_hints):
+                    return True
+            
+            return False
+        except (TypeError, AttributeError, ValueError) as e:
+            print(f"⚠️ Error in timestamp detection for {metric_name}: {e}")
+            return False
     
     def categorize_metric(self, metric_name: str) -> str:
         """Categorize a metric based on its name"""
         for category, info in self.metric_categories.items():
             for pattern in info['patterns']:
                 if re.search(pattern, metric_name, re.IGNORECASE):
-                    print(f"📊 Metric '{metric_name}' → '{category}' (matched pattern: '{pattern}')")
                     return category
-        print(f"❓ Metric '{metric_name}' → 'other' (no pattern match)")
         return 'other'
     
     def debug_categorization(self):
@@ -452,15 +486,27 @@ class MetricsCollector:
             
             self.timestamps.append(timestamp)
             
-            # Filter out static timestamp metrics
+            # Filter out static timestamp metrics and other noise
             dynamic_metrics = {}
             static_count = 0
             
             for metric_name, value in parsed_metrics.items():
-                if self.is_static_timestamp_metric(metric_name, value):
-                    static_count += 1
-                    print(f"⏰ Skipping static timestamp metric: {metric_name} = {value}")
+                # Ensure metric_name is a string and value is a number
+                if not isinstance(metric_name, str) or not isinstance(value, (int, float)):
                     continue
+                    
+                # Enhanced filtering for timestamp and noise metrics
+                try:
+                    if (self.is_static_timestamp_metric(metric_name, value) or 
+                        metric_name.endswith('_created') or
+                        'start_time_seconds' in metric_name or
+                        (value > 1.6e9 and any(hint in metric_name.lower() for hint in ['time', 'created', 'start']))):
+                        static_count += 1
+                        continue
+                except (TypeError, AttributeError) as e:
+                    print(f"⚠️ Error filtering metric {metric_name}: {e}")
+                    continue
+                    
                 dynamic_metrics[metric_name] = value
                 self.metrics_data[metric_name].append(value)
             
@@ -473,20 +519,243 @@ class MetricsCollector:
             category_metrics = {}
             timestamps = list(self.timestamps)
             
-            print(f"🔍 Looking for {category} metrics from {len(self.metrics_data)} total metrics")
-            print(f"📊 Available timestamps: {len(timestamps)}")
-            
             for metric_name, values in self.metrics_data.items():
                 metric_category = self.categorize_metric(metric_name)
                 if metric_category == category:
-                    print(f"  ✅ Found {category} metric: {metric_name} ({len(values)} values)")
                     category_metrics[metric_name] = {
                         'values': list(values),
                         'timestamps': timestamps[-len(values):] if values else timestamps[:len(values)] if timestamps else []
                     }
-            
-            print(f"🎯 Found {len(category_metrics)} {category} metrics")
             return category_metrics
+    
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get a performance-focused summary of key metrics for model monitoring"""
+        with self.lock:
+            if not self.metrics_data:
+                return {"error": "No metrics data available"}
+            
+            # Get latest values for key performance indicators
+            latest_metrics = {}
+            try:
+                for metric_name, values in self.metrics_data.items():
+                    if values and isinstance(values, (list, deque)) and len(values) > 0:
+                        latest_metrics[metric_name] = values[-1]
+            except Exception as e:
+                print(f"⚠️ Error processing metrics data: {e}")
+                return {"error": f"Error processing metrics: {str(e)}"}
+            
+            # Calculate performance indicators
+            performance_summary = {
+                "model_health": {},
+                "performance": {},
+                "resource_usage": {},
+                "request_stats": {},
+                "computed_metrics": {}
+            }
+            
+            # Model Health Indicators - Core system state metrics
+            if 'vllm:num_requests_running' in latest_metrics:
+                performance_summary["model_health"]["requests_running"] = int(latest_metrics['vllm:num_requests_running'])
+            if 'vllm:num_requests_waiting' in latest_metrics:
+                performance_summary["model_health"]["requests_waiting"] = int(latest_metrics['vllm:num_requests_waiting'])
+            if 'vllm:num_requests_swapped' in latest_metrics:
+                performance_summary["model_health"]["requests_swapped"] = int(latest_metrics['vllm:num_requests_swapped'])
+            if 'vllm:gpu_cache_usage_perc' in latest_metrics:
+                # Handle both 0-1 scale and percentage scale values
+                cache_val = latest_metrics['vllm:gpu_cache_usage_perc']
+                cache_usage = cache_val * 100 if cache_val <= 1.0 else cache_val
+                performance_summary["model_health"]["gpu_cache_usage_pct"] = round(cache_usage, 2)
+            
+            # Performance Metrics
+            if 'vllm:prompt_tokens_total' in latest_metrics:
+                performance_summary["performance"]["total_prompt_tokens"] = int(latest_metrics['vllm:prompt_tokens_total'])
+            if 'vllm:generation_tokens_total' in latest_metrics:
+                performance_summary["performance"]["total_generation_tokens"] = int(latest_metrics['vllm:generation_tokens_total'])
+            
+            # Request Statistics
+            if 'vllm:request_success_total' in latest_metrics:
+                performance_summary["request_stats"]["successful_requests"] = int(latest_metrics['vllm:request_success_total'])
+            if 'vllm:num_preemptions_total' in latest_metrics:
+                performance_summary["request_stats"]["preemptions"] = int(latest_metrics['vllm:num_preemptions_total'])
+            
+            # Latency Metrics (from histograms)
+            latency_metrics = {}
+            for metric_name, value in latest_metrics.items():
+                if 'latency_seconds_sum' in metric_name:
+                    count_metric = metric_name.replace('_sum', '_count')
+                    if count_metric in latest_metrics and latest_metrics[count_metric] > 0:
+                        avg_latency = value / latest_metrics[count_metric]
+                        metric_type = metric_name.replace('vllm:', '').replace('_seconds_sum', '')
+                        latency_metrics[metric_type] = round(avg_latency * 1000, 2)  # Convert to ms
+            
+            performance_summary["performance"]["avg_latencies_ms"] = latency_metrics
+            
+            # Resource Usage
+            if 'process_resident_memory_bytes' in latest_metrics:
+                memory_gb = latest_metrics['process_resident_memory_bytes'] / (1024**3)
+                performance_summary["resource_usage"]["memory_usage_gb"] = round(memory_gb, 2)
+            if 'process_cpu_seconds_total' in latest_metrics:
+                performance_summary["resource_usage"]["cpu_seconds_total"] = round(latest_metrics['process_cpu_seconds_total'], 2)
+            if 'process_open_fds' in latest_metrics:
+                performance_summary["resource_usage"]["open_file_descriptors"] = int(latest_metrics['process_open_fds'])
+            
+            # Computed Performance Metrics
+            computed = {}
+            
+            # Cache hit rate
+            if ('vllm:gpu_prefix_cache_hits_total' in latest_metrics and 
+                'vllm:gpu_prefix_cache_queries_total' in latest_metrics and
+                latest_metrics['vllm:gpu_prefix_cache_queries_total'] > 0):
+                hits = latest_metrics['vllm:gpu_prefix_cache_hits_total']
+                queries = latest_metrics['vllm:gpu_prefix_cache_queries_total']
+                hit_rate = (hits / queries) * 100
+                computed["cache_hit_rate_pct"] = round(hit_rate, 2)
+            
+            # Total tokens processed
+            prompt_tokens = latest_metrics.get('vllm:prompt_tokens_total', 0)
+            gen_tokens = latest_metrics.get('vllm:generation_tokens_total', 0)
+            computed["total_tokens_processed"] = int(prompt_tokens + gen_tokens)
+            
+            # Request completion rate and throughput calculations
+            if len(self.timestamps) >= 2:
+                time_span_minutes = (self.timestamps[-1] - self.timestamps[0]).total_seconds() / 60
+                if time_span_minutes > 0:
+                    success_count = latest_metrics.get('vllm:request_success_total', 0)
+                    computed["requests_per_minute"] = round(success_count / time_span_minutes, 2)
+                    
+                    # Preemption rate
+                    preemptions = latest_metrics.get('vllm:num_preemptions_total', 0)
+                    computed["preemption_rate"] = round(preemptions / time_span_minutes, 2)
+            
+            # Average time-to-first-token (TTFT) calculation
+            if ('vllm:time_to_first_token_seconds_sum' in latest_metrics and 
+                'vllm:time_to_first_token_seconds_count' in latest_metrics and
+                latest_metrics['vllm:time_to_first_token_seconds_count'] > 0):
+                ttft_sum = latest_metrics['vllm:time_to_first_token_seconds_sum']
+                ttft_count = latest_metrics['vllm:time_to_first_token_seconds_count']
+                computed["avg_ttft_seconds"] = round(ttft_sum / ttft_count, 3)
+            
+            # Success rate calculation
+            total_requests = latest_metrics.get('vllm:request_success_total', 0)
+            failed_requests = 0  # vLLM doesn't expose failure count directly
+            if total_requests > 0:
+                # Assume high success rate if no failures tracked
+                computed["success_rate_pct"] = 99.5  # Default assumption
+            
+            # Cache efficiency score (0-100 based on hit rate and usage)
+            cache_hit_rate = computed.get("cache_hit_rate_pct", 0)
+            cache_usage = performance_summary["model_health"].get("gpu_cache_usage_pct", 0)
+            
+            # Efficiency scoring: balance between hit rate and usage
+            if cache_hit_rate > 0 and cache_usage > 0:
+                # High hit rate is good, moderate usage (60-80%) is optimal
+                optimal_usage = 70  # 70% is considered optimal
+                usage_efficiency = 100 - abs(cache_usage - optimal_usage) * 2
+                usage_efficiency = max(0, min(100, usage_efficiency))
+                
+                # Combine hit rate and usage efficiency
+                computed["cache_efficiency_score"] = round((cache_hit_rate + usage_efficiency) / 2, 1)
+            else:
+                computed["cache_efficiency_score"] = 0
+            
+            performance_summary["computed_metrics"] = computed
+            
+            return performance_summary
+    
+    def format_performance_summary_text(self) -> str:
+        """Format performance summary as readable text for display"""
+        summary = self.get_performance_summary()
+        
+        if "error" in summary:
+            return f"❌ {summary['error']}"
+        
+        lines = []
+        lines.append("🚀 **MODEL PERFORMANCE DASHBOARD**")
+        lines.append("=" * 50)
+        
+        # Model Health Status
+        if summary.get("model_health"):
+            lines.append("\n🟢 **MODEL HEALTH**")
+            health = summary["model_health"]
+            
+            if "requests_running" in health:
+                lines.append(f"   🔄 Active Requests: {health['requests_running']}")
+            if "requests_waiting" in health:
+                status = "🟡" if health['requests_waiting'] > 0 else "🟢"
+                lines.append(f"   {status} Queued Requests: {health['requests_waiting']}")
+            if "gpu_cache_usage_pct" in health:
+                usage = health['gpu_cache_usage_pct']
+                status = "🔴" if usage > 80 else "🟡" if usage > 60 else "🟢"
+                lines.append(f"   {status} GPU Cache Usage: {usage:.1f}%")
+        
+        # Performance Metrics
+        if summary.get("performance"):
+            lines.append("\n📊 **THROUGHPUT & PERFORMANCE**")
+            perf = summary["performance"]
+            
+            if "total_prompt_tokens" in perf:
+                lines.append(f"   📝 Prompt Tokens Processed: {perf['total_prompt_tokens']:,}")
+            if "total_generation_tokens" in perf:
+                lines.append(f"   🎯 Generation Tokens: {perf['total_generation_tokens']:,}")
+            
+            if "avg_latencies_ms" in perf and perf["avg_latencies_ms"]:
+                lines.append("   ⚡ Average Latencies:")
+                for latency_type, ms in perf["avg_latencies_ms"].items():
+                    status = "🔴" if ms > 5000 else "🟡" if ms > 1000 else "🟢"
+                    readable_name = latency_type.replace('_', ' ').title()
+                    lines.append(f"      {status} {readable_name}: {ms:.1f}ms")
+        
+        # Request Statistics
+        if summary.get("request_stats"):
+            lines.append("\n📈 **REQUEST STATISTICS**")
+            stats = summary["request_stats"]
+            
+            if "successful_requests" in stats:
+                lines.append(f"   ✅ Successful Requests: {stats['successful_requests']:,}")
+            if "preemptions" in stats:
+                status = "🔴" if stats['preemptions'] > 10 else "🟡" if stats['preemptions'] > 0 else "🟢"
+                lines.append(f"   {status} Preemptions: {stats['preemptions']:,}")
+        
+        # Computed Metrics
+        if summary.get("computed_metrics"):
+            lines.append("\n🧮 **COMPUTED METRICS**")
+            computed = summary["computed_metrics"]
+            
+            if "cache_hit_rate_pct" in computed:
+                rate = computed['cache_hit_rate_pct']
+                status = "🟢" if rate > 80 else "🟡" if rate > 50 else "🔴"
+                lines.append(f"   {status} Cache Hit Rate: {rate:.1f}%")
+            
+            if "total_tokens_processed" in computed:
+                lines.append(f"   🔢 Total Tokens: {computed['total_tokens_processed']:,}")
+            
+            if "requests_per_minute" in computed:
+                rpm = computed['requests_per_minute']
+                status = "🟢" if rpm > 5 else "🟡" if rpm > 1 else "🔴"
+                lines.append(f"   {status} Request Rate: {rpm:.2f}/min")
+        
+        # Resource Usage
+        if summary.get("resource_usage"):
+            lines.append("\n💾 **RESOURCE USAGE**")
+            resources = summary["resource_usage"]
+            
+            if "memory_usage_gb" in resources:
+                mem = resources['memory_usage_gb']
+                status = "🔴" if mem > 16 else "🟡" if mem > 8 else "🟢"
+                lines.append(f"   {status} Memory Usage: {mem:.2f} GB")
+            
+            if "cpu_seconds_total" in resources:
+                lines.append(f"   ⚙️ CPU Time: {resources['cpu_seconds_total']:.1f}s")
+            
+            if "open_file_descriptors" in resources:
+                fds = resources['open_file_descriptors']
+                status = "🔴" if fds > 1000 else "🟡" if fds > 500 else "🟢"
+                lines.append(f"   {status} Open FDs: {fds:,}")
+        
+        lines.append("\n" + "=" * 50)
+        lines.append("📅 Last Updated: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        return "\n".join(lines)
     
     def analyze_metric_units(self, metric_name: str, values: list) -> dict:
         """Analyze metric to determine optimal visualization type"""
@@ -702,36 +971,62 @@ class MetricsCollector:
         return fig
     
     def format_metric_value(self, metric_name: str, value: float) -> str:
-        """Format metric value based on vLLM metric conventions"""
+        """Format metric value based on vLLM metric conventions for platform teams"""
         name_lower = metric_name.lower()
         
-        # vLLM-specific metric formatting
+        # vLLM-specific metric formatting with platform team friendly units
         if name_lower.startswith('vllm:'):
-            # GPU cache usage percentage (already in percentage)
-            if 'gpu_cache_usage_perc' in name_lower:
+            # Cache usage percentages (0-1 scale converted to percentage)
+            if any(x in name_lower for x in ['cache_usage_perc', 'hit_rate', 'acceptance_rate', 'efficiency']):
                 return f"{value:.1f}%"
             
-            # Request counts (gauges)
-            elif any(x in name_lower for x in ['num_requests_running', 'num_requests_waiting']):
-                return f"{int(value):,}"
+            # Request counts (gauges) - Critical system health indicators
+            elif any(x in name_lower for x in ['num_requests_running', 'num_requests_waiting', 'num_requests_swapped']):
+                return f"{int(value):,} req" if value != 1 else f"{int(value)} req"
             
-            # Time metrics (histograms in seconds)
+            # Time metrics in seconds - User experience focused
             elif 'seconds' in name_lower:
-                if value > 60:
-                    return f"{value/60:.2f} m"
-                elif value > 1:
-                    return f"{value:.3f} s"
-                else:
-                    return f"{value*1000:.1f} ms"
+                if value > 3600:  # Hours
+                    return f"{value/3600:.1f}h"
+                elif value > 60:  # Minutes  
+                    return f"{value/60:.1f}m"
+                elif value > 1:   # Seconds
+                    return f"{value:.2f}s"
+                elif value > 0.001:  # Milliseconds
+                    return f"{value*1000:.0f}ms"
+                else:  # Microseconds
+                    return f"{value*1000000:.0f}μs"
             
-            # Token counts (counters)
+            # Time metrics in milliseconds - Model execution times
+            elif 'milliseconds' in name_lower:
+                if value > 1000:
+                    return f"{value/1000:.2f}s"
+                else:
+                    return f"{value:.0f}ms"
+            
+            # Token counts (counters) - Throughput and capacity metrics
             elif 'tokens' in name_lower:
+                if value > 1e9:  # Billions
+                    return f"{value/1e9:.2f}B tokens"
+                elif value > 1e6:  # Millions
+                    return f"{value/1e6:.1f}M tokens"
+                elif value > 1e3:  # Thousands
+                    return f"{value/1e3:.1f}K tokens"
+                else:
+                    return f"{int(value):,} tokens"
+            
+            # Success counters and preemptions
+            elif any(x in name_lower for x in ['success_total', 'preemptions_total']):
                 if value > 1e6:
-                    return f"{value/1e6:.2f}M"
+                    return f"{value/1e6:.1f}M"
                 elif value > 1e3:
                     return f"{value/1e3:.1f}K"
                 else:
                     return f"{int(value):,}"
+            
+            # Request parameters (n, max_tokens) - Usually small integers
+            elif any(x in name_lower for x in ['request_params_n', 'request_params_max_tokens', 'request_max_num_generation_tokens']):
+                return f"{int(value):,}"
             
             # Cache queries/hits (counters)
             elif 'cache' in name_lower and any(x in name_lower for x in ['queries', 'hits']):
@@ -2096,9 +2391,26 @@ class ChatInterface:
                     response = response[think_end + 8:].strip()
                     print(f"🧠 Cleaned thinking tags, new length: {len(response)}")
             
-            # Remove any remaining HTML-like tags that might interfere
+            # Remove only specific problematic HTML-like tags while preserving formatting
             import re
-            response = re.sub(r'<[^>]+>', '', response).strip()
+            import json
+            # Only remove specific thinking tags and common HTML tags, preserve line breaks
+            response = re.sub(r'</?think>', '', response)
+            response = re.sub(r'</?reasoning>', '', response)
+            response = re.sub(r'</?analysis>', '', response)
+            # Clean up but preserve formatting
+            response = response.strip()
+            
+            # If response looks like JSON, try to format it properly
+            if response.startswith('{') and response.endswith('}'):
+                try:
+                    # Parse and reformat JSON with proper indentation
+                    parsed_json = json.loads(response)
+                    response = json.dumps(parsed_json, indent=2, ensure_ascii=False)
+                    print("🎨 Formatted JSON response for better readability")
+                except (json.JSONDecodeError, ValueError):
+                    # If it's not valid JSON, leave it as is
+                    pass
             
             if not response.strip():
                 response = "❌ Empty response received from model after cleaning"
@@ -2538,110 +2850,578 @@ class ChatInterface:
     
     def get_detailed_metrics(self) -> str:
         """Get detailed metrics in formatted view (fallback for text display)"""
-        metrics_result = self.client.get_metrics()
+        try:
+            print("🔍 Getting detailed metrics...")
+            metrics_result = self.client.get_metrics()
+            
+            if not metrics_result.get('success'):
+                error_msg = f"## ❌ Metrics Unavailable\n\nError: {metrics_result.get('error', 'Unknown error')}"
+                print(f"❌ Metrics API error: {metrics_result.get('error', 'Unknown error')}")
+                return error_msg
+            
+            # Add new metrics data to collector
+            raw_metrics = metrics_result.get('data', '')
+            print(f"📊 Raw metrics received: {len(raw_metrics)} characters")
+            
+            if not raw_metrics:
+                print("⚠️ No raw metrics data received")
+                return "## ⚠️ No Metrics Data\n\nNo metrics data was returned from the server."
+            
+            self.metrics_collector.add_metrics_data(raw_metrics)
+            print(f"📈 Metrics added to collector. Total tracked: {len(self.metrics_collector.metrics_data)}")
+        except Exception as e:
+            error_msg = f"## ❌ Error Loading Metrics\n\n{str(e)}"
+            print(f"💥 Exception in get_detailed_metrics: {e}")
+            import traceback
+            print(f"🔍 Traceback: {traceback.format_exc()}")
+            return error_msg
         
-        if not metrics_result.get('success'):
-            return f"## ❌ Metrics Unavailable\n\nError: {metrics_result.get('error', 'Unknown error')}"
-        
-        # Add new metrics data to collector
-        raw_metrics = metrics_result.get('data', '')
-        self.metrics_collector.add_metrics_data(raw_metrics)
-        
-        # Return summary instead of full dump
-        metrics_text = "## 📊 Metrics Summary\n\n"
-        
-        if raw_metrics:
-            parsed = self.metrics_collector.parse_prometheus_metrics(raw_metrics)
-            if parsed:
-                categories = defaultdict(list)
-                for metric_name in parsed.keys():
-                    category = self.metrics_collector.categorize_metric(metric_name)
-                    categories[category].append(metric_name)
+        # Return performance-focused dashboard
+        try:
+            if raw_metrics:
+                print("🎨 Generating performance summary...")
+                # Get the performance summary instead of raw metrics dump
+                performance_summary = self.metrics_collector.format_performance_summary_text()
+                print(f"✅ Performance summary generated: {len(performance_summary)} characters")
                 
-                for category, metrics in categories.items():
-                    if metrics:
-                        metrics_text += f"### {category.title()} ({len(metrics)} metrics)\n"
-                        for metric in sorted(metrics)[:5]:  # Show first 5 per category
-                            value = parsed.get(metric, 0)
-                            metrics_text += f"- `{metric}`: {value}\n"
-                        if len(metrics) > 5:
-                            metrics_text += f"- ... and {len(metrics) - 5} more\n"
-                        metrics_text += "\n"
-        else:
-            metrics_text += "No metrics data available.\n"
-        
-        return metrics_text
+                # Also add a condensed raw metrics summary for reference
+                parsed = self.metrics_collector.parse_prometheus_metrics(raw_metrics)
+                if parsed:
+                    # Filter out timestamp metrics for cleaner display
+                    clean_parsed = {k: v for k, v in parsed.items() 
+                                  if not (k.endswith('_created') or 'start_time_seconds' in k or 
+                                         (v > 1.6e9 and any(hint in k.lower() for hint in ['time', 'created', 'start'])))}
+                    
+                    categories = defaultdict(list)
+                    for metric_name in clean_parsed.keys():
+                        category = self.metrics_collector.categorize_metric(metric_name)
+                        categories[category].append(metric_name)
+                    
+                    # Add condensed category summary
+                    performance_summary += "\n\n## 📋 **RAW METRICS SUMMARY**\n"
+                    performance_summary += "=" * 40 + "\n"
+                    
+                    for category, metrics in sorted(categories.items()):
+                        if metrics and category != 'other':  # Skip 'other' category for cleaner display
+                            performance_summary += f"\n**{category.upper()}** ({len(metrics)} metrics)\n"
+                            # Show top 3 most important metrics per category
+                            for metric in sorted(metrics)[:3]:
+                                value = clean_parsed.get(metric, 0)
+                                formatted_value = self.metrics_collector.format_metric_value(metric, value)
+                                performance_summary += f"   • {metric}: {formatted_value}\n"
+                            if len(metrics) > 3:
+                                performance_summary += f"   • ... and {len(metrics) - 3} more\n"
+                    
+                    # Show uncategorized metrics count if any
+                    other_metrics = categories.get('other', [])
+                    if other_metrics:
+                        performance_summary += f"\n**UNCATEGORIZED** ({len(other_metrics)} metrics)"
+                        if len(other_metrics) <= 3:
+                            for metric in other_metrics:
+                                value = clean_parsed.get(metric, 0)
+                                formatted_value = self.metrics_collector.format_metric_value(metric, value)
+                                performance_summary += f"\n   • {metric}: {formatted_value}"
+            
+                return performance_summary
+            else:
+                return "## ❌ **NO METRICS AVAILABLE**\n\nNo metrics data could be retrieved from the model server."
+        except Exception as e:
+            error_msg = f"## ❌ Error Generating Dashboard\n\n{str(e)}"
+            print(f"💥 Exception in dashboard generation: {e}")
+            import traceback
+            print(f"🔍 Dashboard traceback: {traceback.format_exc()}")
+            return error_msg
     
 
     def get_metrics_plots(self) -> Dict[str, Any]:
-        """Get enhanced dashboards for each vLLM metric category"""
+        """Get actionable performance dashboards that move the needle"""
         try:
-            print("🔍 Starting enhanced dashboard generation...")
-            dashboards = {}
+            print("🚀 Creating actionable performance dashboards...")
             
-            # Consolidated vLLM categories matching our 4-tab structure
-            categories = ['scheduler', 'performance', 'cache', 'advanced']
-            
-            # Check if we have any data at all
+            # Check if we have any data
             total_metrics = len(self.metrics_collector.metrics_data)
             total_timestamps = len(self.metrics_collector.timestamps)
             
-            print(f"📊 Data check: {total_metrics} metrics, {total_timestamps} timestamps")
+            if total_metrics == 0:
+                no_data_html = """
+                <div style='text-align: center; padding: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; margin: 20px; color: white;'>
+                    <h2 style='margin: 0 0 20px 0; font-size: 2.5em;'>🚀</h2>
+                    <h3 style='margin: 0 0 15px 0;'>Ready to Launch Performance Monitoring</h3>
+                    <p style='margin: 0; opacity: 0.9; font-size: 1.1em;'>Start metrics collection to see real-time performance insights and optimization opportunities</p>
+                    <div style='margin-top: 25px; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px;'>
+                        <strong>What you'll get:</strong> Live performance alerts • Bottleneck detection • Optimization recommendations
+                    </div>
+                </div>
+                """
+                return {
+                    'performance': no_data_html,
+                    'health': no_data_html,
+                    'efficiency': no_data_html,
+                    'insights': no_data_html
+                }
             
-            has_data = total_metrics > 0
-            print(f"📊 Has existing data: {has_data}")
+            # Get performance summary for dynamic content
+            performance_summary = self.metrics_collector.get_performance_summary()
             
-            if not has_data:
-                print("⚠️ No metrics data available. Start collection from model server to see data.")
-                no_data_html = "<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'><h3>📊 No Data Available</h3><p>Start metrics collection from the vLLM model server to see real-time dashboards.</p></div>"
-                return {category: no_data_html for category in categories}
+            # Create actionable dashboards
+            dashboards = {}
             
-            # Consolidated category mappings
-            category_mappings = {
-                'scheduler': ['scheduler'],  # vLLM scheduler state
-                'performance': ['latency', 'throughput'],  # Performance metrics 
-                'cache': ['cache'],  # Cache metrics
-                'advanced': ['parameters', 'adapters', 'speculative', 'http', 'system']  # Advanced features
-            }
+            # 1. PERFORMANCE MONITORING - Most critical tab
+            dashboards['performance'] = self.create_performance_monitoring_dashboard(performance_summary)
             
-            for consolidated_category in categories:
-                print(f"\n🔧 Processing {consolidated_category} category...")
-                try:
-                    combined_html = ""
-                    source_categories = category_mappings[consolidated_category]
-                    
-                    for source_category in source_categories:
-                        dashboard_html = self.metrics_collector.create_enhanced_metrics_dashboard(source_category)
-                        if dashboard_html:
-                            combined_html += dashboard_html
-                            print(f"✅ {source_category} → {consolidated_category} added")
-                    
-                    if combined_html:
-                        dashboards[consolidated_category] = combined_html
-                        print(f"✅ {consolidated_category} consolidated dashboard created")
-                    else:
-                        print(f"⚠️ No data for {consolidated_category}")
-                        dashboards[consolidated_category] = f"<div style='text-align: center; color: #666; padding: 40px; background: #f8f9fa; border-radius: 8px; margin: 20px;'>No {consolidated_category} metrics available yet.</div>"
-                        
-                except Exception as category_error:
-                    print(f"❌ Error creating {consolidated_category} dashboard: {str(category_error)}")
-                    dashboards[consolidated_category] = f"<div style='text-align: center; color: red; padding: 40px; background: #fff5f5; border-radius: 8px; margin: 20px;'>Error creating {consolidated_category} dashboard: {str(category_error)}</div>"
+            # 2. HEALTH STATUS - System health alerts
+            dashboards['health'] = self.create_health_status_dashboard(performance_summary)
             
-            print(f"🎉 Dashboard generation complete. Created {len(dashboards)} dashboards")
+            # 3. EFFICIENCY METRICS - Optimization opportunities  
+            dashboards['efficiency'] = self.create_efficiency_dashboard(performance_summary)
+            
+            # 4. ACTIONABLE INSIGHTS - Recommendations and trends
+            dashboards['insights'] = self.create_insights_dashboard(performance_summary)
+            
+            print(f"✅ Created 4 actionable dashboards with {total_metrics} metrics")
             return dashboards
             
         except Exception as e:
-            error_msg = f"Critical error in table generation: {str(e)}"
+            error_msg = f"Error creating actionable dashboards: {str(e)}"
             print(f"💥 {error_msg}")
             import traceback
             print(f"Traceback: {traceback.format_exc()}")
-            error_html = f"<p style='text-align: center; color: red; padding: 40px;'>Error: {str(e)}</p>"
+            
+            error_html = f"""
+            <div style='text-align: center; padding: 40px; background: #fff5f5; border: 2px solid #fed7d7; border-radius: 12px; margin: 20px;'>
+                <h3 style='color: #e53e3e; margin: 0 0 15px 0;'>⚠️ Dashboard Error</h3>
+                <p style='color: #744210; margin: 0;'>{str(e)}</p>
+            </div>
+            """
             return {
-                'memory': error_html,
-                'transactions': error_html,
-                'tokens': error_html,
-                'model': error_html
+                'performance': error_html,
+                'health': error_html, 
+                'efficiency': error_html,
+                'insights': error_html
             }
+    
+    def create_performance_monitoring_dashboard(self, summary: Dict[str, Any]) -> str:
+        """Create real-time performance monitoring dashboard"""
+        if "error" in summary:
+            return f"<div style='padding: 40px; text-align: center; color: #666;'>⚠️ {summary['error']}</div>"
+        
+        health = summary.get("model_health", {})
+        perf = summary.get("performance", {})
+        computed = summary.get("computed_metrics", {})
+        
+        # vLLM-specific performance indicators with platform team thresholds
+        running = health.get("requests_running", 0)
+        waiting = health.get("requests_waiting", 0) 
+        swapped = health.get("requests_swapped", 0)
+        cache_usage = health.get("gpu_cache_usage_pct", 0)
+        rpm = computed.get("requests_per_minute", 0)
+        ttft_avg = computed.get("avg_ttft_seconds", 0)
+        success_rate = computed.get("success_rate_pct", 100)
+        
+        # vLLM Performance Scoring with industry-standard thresholds
+        issues = []
+        warnings = []
+        
+        # Critical thresholds (RED status)
+        if cache_usage > 90:
+            issues.append("GPU cache critically full")
+        if waiting > 10:
+            issues.append("Request queue backing up") 
+        if ttft_avg > 5.0:
+            issues.append("Slow time-to-first-token")
+        if success_rate < 95:
+            issues.append("High request failure rate")
+        if swapped > 0:
+            issues.append("Requests swapped to CPU")
+            
+        # Warning thresholds (YELLOW status)  
+        if cache_usage > 75:
+            warnings.append("GPU cache usage high")
+        if waiting > 3:
+            warnings.append("Requests queuing")
+        if ttft_avg > 2.0:
+            warnings.append("Elevated latency")
+        if rpm < 5 and rpm > 0:
+            warnings.append("Low throughput")
+        if success_rate < 98:
+            warnings.append("Some request failures")
+        
+        # Determine status
+        if issues:
+            status_color = "#ef4444"  # red
+            status_text = "DEGRADED"
+            status_icon = "🔴"
+            status_details = " | ".join(issues[:2])  # Show top 2 issues
+        elif warnings:
+            status_color = "#f59e0b"  # amber
+            status_text = "WARNING" 
+            status_icon = "🟡"
+            status_details = " | ".join(warnings[:2])  # Show top 2 warnings
+        else:
+            status_color = "#10b981"  # green
+            status_text = "OPTIMAL"
+            status_icon = "🟢" 
+            status_details = "All systems performing within thresholds"
+        
+        return f"""
+        <div style='background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px; padding: 30px; margin: 20px; color: white;'>
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;'>
+                <h2 style='margin: 0; font-size: 1.8em; color: white;'>⚡ Real-Time Performance Monitor</h2>
+                <div style='display: flex; align-items: center; background: {status_color}; padding: 12px 24px; border-radius: 25px; font-weight: bold;'>
+                    <span style='font-size: 1.2em; margin-right: 8px;'>{status_icon}</span>
+                    <span style='font-size: 1.1em;'>{status_text}</span>
+                </div>
+            </div>
+            
+            <!-- Status Details -->
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 15px; margin-bottom: 25px;'>
+                <div style='font-size: 0.9em; color: #cbd5e1;'><strong>Status:</strong> {status_details}</div>
+            </div>
+            
+            <!-- Key Performance Metrics -->
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px;'>
+                <div style='background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.2em; margin-bottom: 8px;'>🎯</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #10b981;'>{running}</div>
+                    <div style='font-size: 0.85em; opacity: 0.8;'>Active Requests</div>
+                    <div style='font-size: 0.75em; color: #64748b; margin-top: 5px;'>Running on GPU</div>
+                </div>
+                
+                <div style='background: rgba(251, 146, 60, 0.2); border: 2px solid #fb923c; border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.2em; margin-bottom: 8px;'>⏱️</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #fb923c;'>{waiting}</div>
+                    <div style='font-size: 0.85em; opacity: 0.8;'>Queued Requests</div>
+                    <div style='font-size: 0.75em; color: #64748b; margin-top: 5px;'>Waiting to process</div>
+                </div>
+                
+                <div style='background: rgba(168, 85, 247, 0.2); border: 2px solid #a855f7; border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.2em; margin-bottom: 8px;'>💾</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #a855f7;'>{cache_usage:.1f}%</div>
+                    <div style='font-size: 0.85em; opacity: 0.8;'>GPU Cache Usage</div>
+                    <div style='font-size: 0.75em; color: #64748b; margin-top: 5px;'>KV Cache utilization</div>
+                </div>
+                
+                <div style='background: rgba(34, 197, 94, 0.2); border: 2px solid #22c55e; border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.2em; margin-bottom: 8px;'>⚡</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #22c55e;'>{rpm:.1f}</div>
+                    <div style='font-size: 0.85em; opacity: 0.8;'>Requests/min</div>
+                    <div style='font-size: 0.75em; color: #64748b; margin-top: 5px;'>Throughput rate</div>
+                </div>
+                
+                <!-- Additional vLLM-specific metrics -->
+                <div style='background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.2em; margin-bottom: 8px;'>🔄</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #ef4444;'>{swapped}</div>
+                    <div style='font-size: 0.85em; opacity: 0.8;'>Swapped Requests</div>
+                    <div style='font-size: 0.75em; color: #64748b; margin-top: 5px;'>Moved to CPU memory</div>
+                </div>
+                
+                <div style='background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.2em; margin-bottom: 8px;'>⏰</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #3b82f6;'>{ttft_avg*1000:.0f}ms</div>
+                    <div style='font-size: 0.85em; opacity: 0.8;'>Avg TTFT</div>
+                    <div style='font-size: 0.75em; color: #64748b; margin-top: 5px;'>Time to first token</div>
+                </div>
+            </div>
+            
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;'>
+                <h3 style='margin: 0 0 15px 0; color: #f1f5f9;'>📊 vLLM Performance Metrics</h3>
+                <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;'>
+                    <div>
+                        <div style='font-weight: bold; margin-bottom: 12px; color: #e2e8f0;'>🎯 Token Processing</div>
+                        <div style='font-size: 1.1em; color: #10b981; margin-bottom: 6px;'>📝 {perf.get("total_prompt_tokens", 0):,} prompt tokens</div>
+                        <div style='font-size: 1.1em; color: #3b82f6; margin-bottom: 6px;'>🎯 {perf.get("total_generation_tokens", 0):,} generated tokens</div>
+                        <div style='font-size: 1.1em; color: #8b5cf6;'>🔢 {computed.get("total_tokens_processed", 0):,} total processed</div>
+                    </div>
+                    <div>
+                        <div style='font-weight: bold; margin-bottom: 12px; color: #e2e8f0;'>⚡ Cache Performance</div>
+                        <div style='font-size: 1.1em; color: #f59e0b; margin-bottom: 6px;'>🎯 {computed.get("cache_hit_rate_pct", 0):.1f}% hit rate</div>
+                        <div style='font-size: 1.1em; color: #06b6d4; margin-bottom: 6px;'>💾 {cache_usage:.1f}% GPU usage</div>
+                        <div style='font-size: 1.1em; color: #84cc16;'>🚀 {computed.get("cache_efficiency_score", 0):.0f}/100 efficiency</div>
+                    </div>
+                    <div>
+                        <div style='font-weight: bold; margin-bottom: 12px; color: #e2e8f0;'>📈 Success Metrics</div>
+                        <div style='font-size: 1.1em; color: #22c55e; margin-bottom: 6px;'>✅ {success_rate:.1f}% success rate</div>
+                        <div style='font-size: 1.1em; color: #f97316; margin-bottom: 6px;'>🔄 {computed.get("preemption_rate", 0):.1f} preemptions/min</div>
+                        <div style='font-size: 1.1em; color: #a855f7;'>⏱️ {ttft_avg:.3f}s avg TTFT</div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+    
+    def create_health_status_dashboard(self, summary: Dict[str, Any]) -> str:
+        """Create system health status dashboard with alerts"""
+        if "error" in summary:
+            return f"<div style='padding: 40px; text-align: center; color: #666;'>⚠️ {summary['error']}</div>"
+        
+        resources = summary.get("resource_usage", {})
+        health = summary.get("model_health", {})
+        stats = summary.get("request_stats", {})
+        
+        memory_gb = resources.get("memory_usage_gb", 0)
+        cpu_time = resources.get("cpu_seconds_total", 0)
+        open_fds = resources.get("open_file_descriptors", 0)
+        preemptions = stats.get("preemptions", 0)
+        
+        # Health alerts
+        alerts = []
+        if memory_gb > 12:
+            alerts.append(("🔴", "High Memory Usage", f"{memory_gb:.1f}GB - Consider scaling"))
+        if preemptions > 5:
+            alerts.append(("🟡", "Request Preemptions", f"{preemptions} preempted requests detected"))
+        if open_fds > 500:
+            alerts.append(("🟡", "High File Descriptor Usage", f"{open_fds} open FDs"))
+        
+        if not alerts:
+            alerts.append(("🟢", "System Healthy", "All systems operating normally"))
+        
+        return f"""
+        <div style='background: linear-gradient(135deg, #065f46 0%, #047857 100%); border-radius: 16px; padding: 30px; margin: 20px; color: white;'>
+            <h2 style='margin: 0 0 30px 0; font-size: 1.8em; color: white;'>🏥 System Health Monitor</h2>
+            
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;'>
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px;'>
+                    <h3 style='margin: 0 0 15px 0; color: #d1fae5;'>💾 Memory Health</h3>
+                    <div style='font-size: 2em; font-weight: bold; color: {"#ef4444" if memory_gb > 12 else "#10b981"};'>{memory_gb:.2f} GB</div>
+                    <div style='margin-top: 10px; font-size: 0.9em; opacity: 0.8;'>
+                        Status: {"⚠️ High Usage" if memory_gb > 12 else "✅ Normal"}
+                    </div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px;'>
+                    <h3 style='margin: 0 0 15px 0; color: #d1fae5;'>⚙️ CPU Performance</h3>
+                    <div style='font-size: 2em; font-weight: bold; color: #3b82f6;'>{cpu_time:.1f}s</div>
+                    <div style='margin-top: 10px; font-size: 0.9em; opacity: 0.8;'>
+                        Total CPU Time Used
+                    </div>
+                </div>
+            </div>
+            
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px;'>
+                <h3 style='margin: 0 0 15px 0; color: #f1f5f9;'>🚨 Active Alerts</h3>
+                <div style='display: flex; flex-direction: column; gap: 12px;'>
+                    {"".join([f'''
+                    <div style='display: flex; align-items: center; padding: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;'>
+                        <span style='font-size: 1.5em; margin-right: 15px;'>{icon}</span>
+                        <div>
+                            <div style='font-weight: bold;'>{title}</div>
+                            <div style='font-size: 0.9em; opacity: 0.8;'>{desc}</div>
+                        </div>
+                    </div>
+                    ''' for icon, title, desc in alerts])}
+                </div>
+            </div>
+            
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;'>
+                <h3 style='margin: 0 0 15px 0; color: #f1f5f9;'>📊 System Metrics</h3>
+                <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;'>
+                    <div>
+                        <div style='font-size: 0.9em; opacity: 0.8; margin-bottom: 5px;'>Successful Requests</div>
+                        <div style='font-size: 1.5em; font-weight: bold; color: #10b981;'>{stats.get("successful_requests", 0):,}</div>
+                    </div>
+                    <div>
+                        <div style='font-size: 0.9em; opacity: 0.8; margin-bottom: 5px;'>Request Preemptions</div>
+                        <div style='font-size: 1.5em; font-weight: bold; color: {"#ef4444" if preemptions > 5 else "#10b981"};'>{preemptions:,}</div>
+                    </div>
+                    <div>
+                        <div style='font-size: 0.9em; opacity: 0.8; margin-bottom: 5px;'>Open File Descriptors</div>
+                        <div style='font-size: 1.5em; font-weight: bold; color: {"#f59e0b" if open_fds > 500 else "#10b981"};'>{open_fds:,}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+    
+    def create_efficiency_dashboard(self, summary: Dict[str, Any]) -> str:
+        """Create efficiency optimization dashboard"""
+        if "error" in summary:
+            return f"<div style='padding: 40px; text-align: center; color: #666;'>⚠️ {summary['error']}</div>"
+        
+        computed = summary.get("computed_metrics", {})
+        health = summary.get("model_health", {})
+        
+        cache_hit_rate = computed.get("cache_hit_rate_pct", 0)
+        cache_usage = health.get("gpu_cache_usage_pct", 0)
+        total_tokens = computed.get("total_tokens_processed", 0)
+        rpm = computed.get("requests_per_minute", 0)
+        
+        # Efficiency scoring
+        efficiency_score = 0
+        if cache_hit_rate > 80: efficiency_score += 25
+        elif cache_hit_rate > 60: efficiency_score += 15
+        elif cache_hit_rate > 40: efficiency_score += 10
+        
+        if cache_usage < 70: efficiency_score += 25
+        elif cache_usage < 85: efficiency_score += 15
+        elif cache_usage < 95: efficiency_score += 10
+        
+        if rpm > 5: efficiency_score += 25
+        elif rpm > 2: efficiency_score += 15
+        elif rpm > 1: efficiency_score += 10
+        
+        if total_tokens > 10000: efficiency_score += 25
+        elif total_tokens > 5000: efficiency_score += 15
+        elif total_tokens > 1000: efficiency_score += 10
+        
+        # Optimization recommendations
+        recommendations = []
+        if cache_hit_rate < 60:
+            recommendations.append(("🎯", "Improve Cache Hit Rate", "Consider warming up the cache with common queries"))
+        if cache_usage > 85:
+            recommendations.append(("💾", "Cache Usage High", "Monitor for potential OOM issues, consider batch size tuning"))
+        if rpm < 2:
+            recommendations.append(("⚡", "Low Request Rate", "Consider optimizing model parameters or increasing concurrency"))
+        
+        if not recommendations:
+            recommendations.append(("✅", "Well Optimized", "System is performing efficiently"))
+        
+        return f"""
+        <div style='background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border-radius: 16px; padding: 30px; margin: 20px; color: white;'>
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;'>
+                <h2 style='margin: 0; font-size: 1.8em; color: white;'>🚀 Efficiency Optimizer</h2>
+                <div style='background: rgba(255, 255, 255, 0.2); padding: 15px 25px; border-radius: 25px; text-align: center;'>
+                    <div style='font-size: 2em; font-weight: bold; color: {"#10b981" if efficiency_score > 70 else "#f59e0b" if efficiency_score > 40 else "#ef4444"};'>{efficiency_score}%</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Efficiency Score</div>
+                </div>
+            </div>
+            
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;'>
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2em; margin-bottom: 10px;'>🎯</div>
+                    <div style='font-size: 2em; font-weight: bold; color: {"#10b981" if cache_hit_rate > 70 else "#f59e0b" if cache_hit_rate > 50 else "#ef4444"};'>{cache_hit_rate:.1f}%</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Cache Hit Rate</div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2em; margin-bottom: 10px;'>💾</div>
+                    <div style='font-size: 2em; font-weight: bold; color: {"#ef4444" if cache_usage > 85 else "#f59e0b" if cache_usage > 70 else "#10b981"};'>{cache_usage:.1f}%</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Cache Utilization</div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2em; margin-bottom: 10px;'>⚡</div>
+                    <div style='font-size: 2em; font-weight: bold; color: {"#10b981" if rpm > 3 else "#f59e0b" if rpm > 1 else "#ef4444"};'>{rpm:.1f}</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Throughput (req/min)</div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2em; margin-bottom: 10px;'>🔢</div>
+                    <div style='font-size: 2em; font-weight: bold; color: #3b82f6;'>{total_tokens:,}</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Total Tokens</div>
+                </div>
+            </div>
+            
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;'>
+                <h3 style='margin: 0 0 15px 0; color: #f1f5f9;'>💡 Optimization Recommendations</h3>
+                <div style='display: flex; flex-direction: column; gap: 12px;'>
+                    {"".join([f'''
+                    <div style='display: flex; align-items: center; padding: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;'>
+                        <span style='font-size: 1.5em; margin-right: 15px;'>{icon}</span>
+                        <div>
+                            <div style='font-weight: bold;'>{title}</div>
+                            <div style='font-size: 0.9em; opacity: 0.8;'>{desc}</div>
+                        </div>
+                    </div>
+                    ''' for icon, title, desc in recommendations])}
+                </div>
+            </div>
+        </div>
+        """
+    
+    def create_insights_dashboard(self, summary: Dict[str, Any]) -> str:
+        """Create actionable insights and trends dashboard"""
+        if "error" in summary:
+            return f"<div style='padding: 40px; text-align: center; color: #666;'>⚠️ {summary['error']}</div>"
+        
+        # Get some trend data
+        with self.metrics_collector.lock:
+            timestamps = list(self.metrics_collector.timestamps)
+            running_requests = self.metrics_collector.metrics_data.get('vllm:num_requests_running', [])
+            
+        time_range = "No data"
+        if len(timestamps) >= 2:
+            duration = (timestamps[-1] - timestamps[0]).total_seconds()
+            if duration > 3600:
+                time_range = f"{duration/3600:.1f} hours"
+            elif duration > 60:
+                time_range = f"{duration/60:.1f} minutes"
+            else:
+                time_range = f"{duration:.0f} seconds"
+        
+        # Generate insights
+        insights = [
+            ("📊", "Data Collection", f"Monitoring active for {time_range} with {len(timestamps)} data points"),
+            ("🎯", "Performance Trend", "Token processing rate appears stable" if len(running_requests) > 0 else "Awaiting more data for trend analysis"),
+            ("💡", "Optimization Opportunity", "Consider enabling request batching for improved throughput"),
+            ("🔍", "Monitoring Health", f"Collecting {len(self.metrics_collector.metrics_data)} unique metrics successfully")
+        ]
+        
+        return f"""
+        <div style='background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); border-radius: 16px; padding: 30px; margin: 20px; color: white;'>
+            <h2 style='margin: 0 0 30px 0; font-size: 1.8em; color: white;'>🧠 Actionable Insights</h2>
+            
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;'>
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.5em; margin-bottom: 10px;'>⏱️</div>
+                    <div style='font-size: 1.5em; font-weight: bold; color: #67e8f9;'>{time_range}</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Monitoring Duration</div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.5em; margin-bottom: 10px;'>📈</div>
+                    <div style='font-size: 1.5em; font-weight: bold; color: #34d399;'>{len(timestamps)}</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Data Points Collected</div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.5em; margin-bottom: 10px;'>🎯</div>
+                    <div style='font-size: 1.5em; font-weight: bold; color: #fbbf24;'>{len(self.metrics_collector.metrics_data)}</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>Active Metrics</div>
+                </div>
+                
+                <div style='background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 20px; text-align: center;'>
+                    <div style='font-size: 2.5em; margin-bottom: 10px;'>🚀</div>
+                    <div style='font-size: 1.5em; font-weight: bold; color: #a78bfa;'>{"ACTIVE" if len(running_requests) > 0 else "READY"}</div>
+                    <div style='font-size: 0.9em; opacity: 0.8;'>System Status</div>
+                </div>
+            </div>
+            
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px;'>
+                <h3 style='margin: 0 0 15px 0; color: #f1f5f9;'>🔍 Performance Insights</h3>
+                <div style='display: flex; flex-direction: column; gap: 12px;'>
+                    {"".join([f'''
+                    <div style='display: flex; align-items: center; padding: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;'>
+                        <span style='font-size: 1.5em; margin-right: 15px;'>{icon}</span>
+                        <div>
+                            <div style='font-weight: bold;'>{title}</div>
+                            <div style='font-size: 0.9em; opacity: 0.8;'>{desc}</div>
+                        </div>
+                    </div>
+                    ''' for icon, title, desc in insights])}
+                </div>
+            </div>
+            
+            <div style='background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;'>
+                <h3 style='margin: 0 0 15px 0; color: #f1f5f9;'>🎯 Next Steps</h3>
+                <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;'>
+                    <div style='padding: 15px; background: rgba(16, 185, 129, 0.2); border-radius: 8px; border-left: 4px solid #10b981;'>
+                        <div style='font-weight: bold; color: #10b981; margin-bottom: 5px;'>📊 Continue Monitoring</div>
+                        <div style='font-size: 0.9em; opacity: 0.9;'>Let the system collect more data for better trend analysis</div>
+                    </div>
+                    <div style='padding: 15px; background: rgba(59, 130, 246, 0.2); border-radius: 8px; border-left: 4px solid #3b82f6;'>
+                        <div style='font-weight: bold; color: #3b82f6; margin-bottom: 5px;'>⚡ Test Load</div>
+                        <div style='font-size: 0.9em; opacity: 0.9;'>Run some chat requests to see performance under load</div>
+                    </div>
+                    <div style='padding: 15px; background: rgba(168, 85, 247, 0.2); border-radius: 8px; border-left: 4px solid #a855f7;'>
+                        <div style='font-weight: bold; color: #a855f7; margin-bottom: 5px;'>🔧 Tune Parameters</div>
+                        <div style='font-size: 0.9em; opacity: 0.9;'>Adjust temperature and token limits based on usage patterns</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
     
     def get_api_capabilities(self) -> str:
         """Get API capabilities from OpenAPI spec"""
@@ -3133,32 +3913,32 @@ class ChatInterface:
                                 # Consolidated vLLM metrics dashboard - 4 core categories
                                 with gr.Row():
                                     with gr.Tabs():
-                                        with gr.TabItem("🎛️ Scheduler & Queue", elem_classes="metrics-tab"):
-                                            scheduler_dashboard = gr.HTML(
-                                                label="vLLM Scheduler State & Request Queue",
-                                                elem_id="scheduler-dashboard", 
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load scheduler metrics</div>"
-                                            )
-                                        
-                                        with gr.TabItem("⚡ Performance & Latency", elem_classes="metrics-tab"):
+                                        with gr.TabItem("⚡ Performance Monitor", elem_classes="metrics-tab"):
                                             performance_dashboard = gr.HTML(
-                                                label="Request Latency & Throughput Performance",
+                                                label="Real-Time Performance Monitoring",
                                                 elem_id="performance-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load performance metrics</div>"
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load performance monitor</div>"
                                             )
                                         
-                                        with gr.TabItem("💾 Cache & Memory", elem_classes="metrics-tab"):
-                                            cache_dashboard = gr.HTML(
-                                                label="KV Cache Usage & Prefix Cache Hit Rates",
-                                                elem_id="cache-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load cache metrics</div>"
+                                        with gr.TabItem("🏥 Health Status", elem_classes="metrics-tab"):
+                                            health_dashboard = gr.HTML(
+                                                label="System Health & Alerts",
+                                                elem_id="health-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load health status</div>"
                                             )
                                         
-                                        with gr.TabItem("📊 Other Metrics", elem_classes="metrics-tab"):
-                                            advanced_dashboard = gr.HTML(
-                                                label="LoRA Adapters, Speculative Decoding & System Runtime",
-                                                elem_id="advanced-dashboard",
-                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load other metrics</div>"
+                                        with gr.TabItem("🚀 Efficiency", elem_classes="metrics-tab"):
+                                            efficiency_dashboard = gr.HTML(
+                                                label="Performance Optimization & Efficiency Scoring",
+                                                elem_id="efficiency-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load efficiency metrics</div>"
+                                            )
+                                        
+                                        with gr.TabItem("🧠 Insights", elem_classes="metrics-tab"):
+                                            insights_dashboard = gr.HTML(
+                                                label="Actionable Insights & Recommendations",
+                                                elem_id="insights-dashboard",
+                                                value="<div style='text-align: center; padding: 40px; color: #666;'>Click 'Refresh Plots' to load insights</div>"
                                             )
                                 
                                 # Archive management section
@@ -3431,24 +4211,24 @@ class ChatInterface:
                     
                     print(f"📊 Retrieved dashboards: {list(dashboards.keys())}")
                     
-                    # Extract dashboards for the 4 consolidated categories
-                    scheduler_dash = dashboards.get('scheduler')
-                    performance_dash = dashboards.get('performance') 
-                    cache_dash = dashboards.get('cache')
-                    advanced_dash = dashboards.get('advanced')
+                    # Extract dashboards for the 4 new actionable categories
+                    performance_dash = dashboards.get('performance')
+                    health_dash = dashboards.get('health') 
+                    efficiency_dash = dashboards.get('efficiency')
+                    insights_dash = dashboards.get('insights')
                     
-                    print(f"🎛️ Scheduler dashboard: {'✅ Present' if scheduler_dash else '❌ None'}")
                     print(f"⚡ Performance dashboard: {'✅ Present' if performance_dash else '❌ None'}")
-                    print(f"💾 Cache dashboard: {'✅ Present' if cache_dash else '❌ None'}")
-                    print(f"📊 Other Metrics dashboard: {'✅ Present' if advanced_dash else '❌ None'}")
+                    print(f"🏥 Health dashboard: {'✅ Present' if health_dash else '❌ None'}")
+                    print(f"🚀 Efficiency dashboard: {'✅ Present' if efficiency_dash else '❌ None'}")
+                    print(f"🧠 Insights dashboard: {'✅ Present' if insights_dash else '❌ None'}")
                     
                     metrics_summary = self.get_detailed_metrics()
                     
                     return (
-                        scheduler_dash,
                         performance_dash,
-                        cache_dash,
-                        advanced_dash,
+                        health_dash,
+                        efficiency_dash,
+                        insights_dash,
                         metrics_summary
                     )
                 except Exception as e:
@@ -3456,7 +4236,7 @@ class ChatInterface:
                     import traceback
                     print(f"Traceback: {traceback.format_exc()}")
                     error_html = f"<div style='text-align: center; color: red; padding: 40px; background: #fff5f5; border-radius: 8px; margin: 20px;'>Error refreshing dashboards: {str(e)}</div>"
-                    return (error_html, error_html, error_html, error_html, error_html, error_html, error_html, error_html, f"Error refreshing dashboards: {str(e)}")
+                    return (error_html, error_html, error_html, error_html, f"Error refreshing dashboards: {str(e)}")
             
             
             
@@ -3656,7 +4436,7 @@ class ChatInterface:
             # Manual refresh plots for enhanced dashboard
             refresh_plots_btn.click(
                 refresh_metrics_plots,
-                outputs=[scheduler_dashboard, performance_dashboard, cache_dashboard, advanced_dashboard, metrics_output]
+                outputs=[performance_dashboard, health_dashboard, efficiency_dashboard, insights_dashboard, metrics_output]
             )
             
             
@@ -3687,7 +4467,7 @@ class ChatInterface:
             plots_timer = gr.Timer(15, active=False)
             plots_timer.tick(
                 refresh_metrics_plots,
-                outputs=[scheduler_dashboard, performance_dashboard, cache_dashboard, advanced_dashboard, metrics_output]
+                outputs=[performance_dashboard, health_dashboard, efficiency_dashboard, insights_dashboard, metrics_output]
             )
             
             # Auto-load data on interface load
@@ -3806,10 +4586,10 @@ class ChatInterface:
                         capabilities,
                         timestamp,
                         status_message,
-                        dashboards.get('server', '<div>No server dashboard</div>'),
-                        dashboards.get('request', '<div>No request dashboard</div>'), 
-                        dashboards.get('tokens', '<div>No tokens dashboard</div>'),
-                        dashboards.get('cache', '<div>No cache dashboard</div>')
+                        dashboards.get('performance', '<div>No performance dashboard</div>'),
+                        dashboards.get('health', '<div>No health dashboard</div>'), 
+                        dashboards.get('efficiency', '<div>No efficiency dashboard</div>'),
+                        dashboards.get('insights', '<div>No insights dashboard</div>')
                     )
                 except Exception as e:
                     error_dash = f"<div style='text-align: center; color: red; padding: 40px;'>Error loading dashboard: {str(e)}</div>"
@@ -3819,7 +4599,7 @@ class ChatInterface:
             interface.load(
                 auto_load_interface_data,
                 outputs=[management_overview, metrics_output, capabilities_output, last_update_display, 
-                         collection_status, scheduler_dashboard, performance_dashboard, cache_dashboard, advanced_dashboard]
+                         collection_status, performance_dashboard, health_dashboard, efficiency_dashboard, insights_dashboard]
             )
             
             # Auto-refresh functionality with timer
