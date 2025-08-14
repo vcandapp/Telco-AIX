@@ -2,7 +2,6 @@
 OpenShift AI Hosted Model Serving - Telco AIX - SME Chat UI
 Author: Fatih E. NAR
 """
-
 import gradio as gr
 import requests
 import json
