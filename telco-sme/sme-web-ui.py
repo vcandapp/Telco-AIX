@@ -40,13 +40,17 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 @dataclass
 class Config:
     """Enhanced configuration for the chat application"""
-    api_endpoint: str = "https://qwen3-32b-vllm-latest-tme-aix.apps.sandbox01.narlabs.io"
-    model_name: str = "qwen3-32b-vllm-latest"
-    default_temperature: float = 0.3
-    default_max_tokens: int = 4192
-    admin_username: str = "admin"
-    admin_password: str = "minad"
+    api_endpoint: str = "https://put-your-model-route-here"
+    model_name: str = "put-your-model-name-here"
+    default_temperature: float = 0.2
+    default_max_tokens: int = 4096
+    admin_username: str = "admin-user"
+    admin_password: str = "admin-pwd"
     verify_ssl: bool = False
+    
+    # Token Authentication
+    api_token: str = "put-your-token-here"
+    use_token_auth: bool = True
     
     # Timeout settings
     connect_timeout: int = 45
@@ -1478,14 +1482,22 @@ class ChatClient:
         session = requests.Session()
         session.verify = self.config.verify_ssl
         
-        # Optimize connection settings
-        session.headers.update({
+        # Build headers
+        headers = {
             'User-Agent': 'OpenShift-AI-Chat/2.0',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'Connection': 'keep-alive',
             'Keep-Alive': 'timeout=120, max=100'
-        })
+        }
+        
+        # Add token authentication if enabled
+        if self.config.use_token_auth and self.config.api_token:
+            headers['Authorization'] = f'Bearer {self.config.api_token}'
+            print("🔐 Token authentication enabled")
+        
+        # Optimize connection settings
+        session.headers.update(headers)
         
         # Connection pooling
         adapter = requests.adapters.HTTPAdapter(
