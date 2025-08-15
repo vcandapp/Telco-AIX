@@ -110,9 +110,28 @@ Fri Aug 15 03:12:47 2025
 
 **Analysis:**
 - **Model Memory:** 15,506 MiB (~15.5GB) - Base Qwen3-Embedding-8B weights
-- **Available Memory:** 9,058 MiB (~9GB) - For dynamic context processing  
-- **Utilization:** 63% of 24GB capacity
-- **Headroom:** Sufficient for current config (8K context, 32 batch size)
+- **Dynamic Memory:** 0 MiB additional - TEI uses in-place computation
+- **Power Under Load:** 13W → 83W (processing), returns to ~58W  
+- **Temperature:** 41°C → 46°C (+5°C under sustained load)
+- **Available Memory:** 9,058 MiB (~9GB) - Reserved but unused due to efficient design
+
+**Key Insight:** TEI optimizes for memory efficiency - embedding computation happens in-place without allocating additional GPU memory, making it ideal for high-throughput scenarios.
+
+### Load Testing Results
+
+Under heavy concurrent load (70+ embedding requests):
+
+**Memory Usage:** ✅ **CONSTANT** at 15,516 MiB
+- No dynamic allocation regardless of load
+- Context processing uses existing model memory space
+- Validates in-place computation architecture
+
+**Power & Performance:** ⚡ **SCALES WITH LOAD**  
+- Idle: ~58W → Heavy Load: 80-100W+ 
+- Temperature: 46°C → 50-55°C under sustained load
+- Performance State: P8 (idle) → P2 (active processing)
+
+**Conclusion:** TEI's fixed memory footprint means you can maximize throughput without memory concerns - scaling is limited by compute, not memory allocation.
 
 ### Scaling Parameters
 
