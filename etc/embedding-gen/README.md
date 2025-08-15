@@ -76,6 +76,44 @@ Example: 16GB + 8GB (actual context) + 2GB (cache) + 2GB = ~28GB
 
 **Note:** Embedding Dim (4,096) is the output vector size, not a memory parameter.
 
+### Real-World Example
+
+Current deployment on RTX 4090 (24GB):
+
+```
+sh-5.1# nvidia-smi
+Fri Aug 15 03:12:47 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.148.08             Driver Version: 570.148.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4090        On  |   00000000:19:00.0 Off |                  Off |
+|  0%   41C    P8             13W /  450W |   15516MiB /  24564MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA GeForce RTX 4090        On  |   00000000:68:00.0 Off |                  Off |
+|  0%   47C    P8             21W /  450W |       1MiB /  24564MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A          553657      C   text-embeddings-router                15506MiB |
++-----------------------------------------------------------------------------------------+
+```
+
+**Analysis:**
+- **Model Memory:** 15,506 MiB (~15.5GB) - Base Qwen3-Embedding-8B weights
+- **Available Memory:** 9,058 MiB (~9GB) - For dynamic context processing  
+- **Utilization:** 63% of 24GB capacity
+- **Headroom:** Sufficient for current config (8K context, 32 batch size)
+
 ### Scaling Parameters
 
 **Increase Max Context (8,192 → 16,384):**
