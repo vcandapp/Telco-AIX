@@ -55,35 +55,41 @@ API requires authentication with Bearer token. Without token returns `401 Unauth
 
 ### Memory Usage Formula
 
-**Base Model Memory:**
+**Model Memory (Fixed):**
 ```
-Model Size = 8B parameters × 2 bytes (float16) = 16GB
+Qwen3-Embedding-8B = 8 billion parameters × 2 bytes (float16) = 16GB
 ```
 
-**Context Processing Memory:**
+**Dynamic Memory (Scales with usage):**
 ```
-Context Memory = Max Context × Embedding Dim × Batch Size × 4 bytes (float32)
-Example: 8,192 × 4,096 × 32 × 4 = 4.3GB
+Context Memory = Max Context × Hidden Size × Batch Size × Layers × 4 bytes
+Hidden Size = 4,096 (model architecture, not output dim)
+Layers = ~32 (transformer layers)
+Example: 8,192 × 4,096 × 8 × 32 × 4 = 34GB per batch
 ```
 
 **Total GPU Memory Required:**
 ```
-Total = Model Size + Context Memory + Overhead (2-4GB)
-Example: 16GB + 4.3GB + 3GB = ~23GB
+Total = Model Memory + Context Memory + KV Cache + Overhead
+Example: 16GB + 8GB (actual context) + 2GB (cache) + 2GB = ~28GB
 ```
+
+**Note:** Embedding Dim (4,096) is the output vector size, not a memory parameter.
 
 ### Scaling Parameters
 
 **Increase Max Context (8,192 → 16,384):**
-- Memory impact: +4.3GB per doubling
+- Memory impact: Proportional to context length
 - Edit ConfigMap: `MAX_BATCH_TOKENS: "65536"`
 - Requires: Additional 4-8GB GPU memory
+- Formula: Additional memory ≈ (New Context - Old Context) × Hidden Size × Batch × 4 bytes
 
 **Increase Batch Size (32 → 64):**
-- Memory impact: +4.3GB per doubling  
+- Memory impact: Linear with batch size
 - Edit ConfigMap: `MAX_CONCURRENT_REQUESTS: "64"`
 - Edit ConfigMap: `MAX_CLIENT_BATCH_SIZE: "128"`
-- Requires: Additional 4-8GB GPU memory
+- Requires: Additional 8-16GB GPU memory
+- Formula: Additional memory ≈ Context × Hidden Size × Additional Batch × 4 bytes
 
 ### GPU Memory Requirements
 
