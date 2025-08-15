@@ -1,0 +1,277 @@
+---
+# Secret for API authentication token
+apiVersion: v1
+kind: Secret
+metadata:
+  name: qwen3-embedding-api-token
+  namespace: tme-aix
+  labels:
+    app: qwen3-embedding-tei
+    component: auth
+type: Opaque
+data:
+  # Base64 encoded API token: "tme-aix-embedding-2024-secure-token"
+  api-token: dG1lLWFpeC1lbWJlZGRpbmctMjAyNC1zZWN1cmUtdG9rZW4=
+---
+# ServiceAccount for Qwen3 Embedding (TEI version)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: qwen3-embedding-tei-sa
+  namespace: tme-aix
+---
+# ClusterRoleBinding to use anyuid SCC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: qwen3-embedding-tei-anyuid
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+subjects:
+- kind: ServiceAccount
+  name: qwen3-embedding-tei-sa
+  namespace: tme-aix
+---
+# ConfigMap for TEI configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwen3-embedding-tei-config
+  namespace: tme-aix
+  labels:
+    app: qwen3-embedding-tei
+    component: config
+data:
+  MODEL_ID: "Qwen/Qwen3-Embedding-8B"
+  DTYPE: "float16"
+  MAX_CONCURRENT_REQUESTS: "32"
+  MAX_BATCH_TOKENS: "32768"
+  MAX_CLIENT_BATCH_SIZE: "64"
+  JSON_OUTPUT: "true"
+  TRUST_REMOTE_CODE: "true"
+---
+# TEI deployment for Qwen3-Embedding-8B
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen3-embedding-tei
+  namespace: tme-aix
+  labels:
+    app: qwen3-embedding-tei
+    version: v1
+    model: qwen3-embedding
+    inference: tei
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: qwen3-embedding-tei
+  template:
+    metadata:
+      labels:
+        app: qwen3-embedding-tei
+        version: v1
+        model: qwen3-embedding
+        inference: tei
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: qwen3-embedding-tei-sa
+      
+      # Node selector for GPU nodes
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      
+      # Tolerations for GPU nodes
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: gpu-workload
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      
+      # Security context compatible with OpenShift
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+        fsGroup: 0
+      
+      containers:
+      - name: qwen3-embedding-tei
+        image: ghcr.io/huggingface/text-embeddings-inference:1.8
+        imagePullPolicy: Always
+        
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: false
+          runAsUser: 0
+          seccompProfile:
+            type: RuntimeDefault
+        
+        # TEI startup arguments
+        args:
+        - --model-id=$(MODEL_ID)
+        - --dtype=$(DTYPE)
+        - --max-concurrent-requests=$(MAX_CONCURRENT_REQUESTS)
+        - --max-batch-tokens=$(MAX_BATCH_TOKENS)
+        - --max-client-batch-size=$(MAX_CLIENT_BATCH_SIZE)
+        - --json-output
+        - --port
+        - "8080"
+        - --api-key=$(API_KEY)
+        
+        env:
+        - name: MODEL_ID
+          valueFrom:
+            configMapKeyRef:
+              name: qwen3-embedding-tei-config
+              key: MODEL_ID
+        - name: DTYPE
+          valueFrom:
+            configMapKeyRef:
+              name: qwen3-embedding-tei-config
+              key: DTYPE
+        - name: MAX_CONCURRENT_REQUESTS
+          valueFrom:
+            configMapKeyRef:
+              name: qwen3-embedding-tei-config
+              key: MAX_CONCURRENT_REQUESTS
+        - name: MAX_BATCH_TOKENS
+          valueFrom:
+            configMapKeyRef:
+              name: qwen3-embedding-tei-config
+              key: MAX_BATCH_TOKENS
+        - name: MAX_CLIENT_BATCH_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: qwen3-embedding-tei-config
+              key: MAX_CLIENT_BATCH_SIZE
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: NCCL_DEBUG
+          value: "WARN"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: HF_HOME
+          value: "/data"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: qwen3-embedding-api-token
+              key: api-token
+        
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        
+        resources:
+          requests:
+            memory: "12Gi"
+            cpu: "2"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "24Gi"
+            cpu: "6"
+            nvidia.com/gpu: 1
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 40
+        
+        volumeMounts:
+        - name: model-cache
+          mountPath: /data
+        - name: shm
+          mountPath: /dev/shm
+      
+      volumes:
+      - name: model-cache
+        emptyDir:
+          sizeLimit: 30Gi
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 4Gi
+      
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+---
+# Service for TEI deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: qwen3-embedding-tei-service
+  namespace: tme-aix
+  labels:
+    app: qwen3-embedding-tei
+    service: embedding
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: qwen3-embedding-tei
+---
+# Route for TEI deployment
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: qwen3-embedding-tei-route
+  namespace: tme-aix
+  labels:
+    app: qwen3-embedding-tei
+    service: embedding
+spec:
+  to:
+    kind: Service
+    name: qwen3-embedding-tei-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
