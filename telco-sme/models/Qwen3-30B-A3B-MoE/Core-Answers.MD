@@ -1,4 +1,5 @@
 Based on the telco expert responses from your Qwen3-30B-A3B-FP8 deployment, here's detailed evaluation:
+{Average: ~86 Token/sec on a single RTX 4090 D 48GB Large POD}
 
 ## **Overall Assessment: 82/100**
 
