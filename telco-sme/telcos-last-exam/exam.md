@@ -3,7 +3,6 @@
 **Instructions**: Answer all questions completely. Show detailed calculations where required. Provide specific numerical values and cite relevant 3GPP specifications. No partial answers accepted - provide complete solutions.
 
 **Total Points**: 500  
-**Time Limit**: 120 minutes
 
 ---
 
