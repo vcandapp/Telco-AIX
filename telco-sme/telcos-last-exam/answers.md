@@ -26,9 +26,9 @@ FSPL = 43.52 + 211.82 + (-147.56) = 107.78 dB
 ```
 Thermal noise: -174 + 10log₁₀(100×10⁶) = -174 + 80 = -94 dBm
 Required Rx power: -94 + 25 = -69 dBm
-Total path loss: 87.79 + 19.33 = 107.12 dB
-Required Tx power: -69 + 107.12 = 38.12 dBm
-For 99.99% availability, add rain margin: 38.12 + 8.5 = 46.62 dBm
+Total path loss: 107.78 + 19.33 = 127.11 dB
+Required Tx power: -69 + 127.11 = 58.11 dBm
+For 99.99% availability, add rain margin: 58.11 + 8.5 = 66.61 dBm
 ```
 
 **d) Fade Margin for 99.999% Availability (5 points)**
@@ -340,8 +340,9 @@ Expected latency: <0.8ms for URLLC, <4ms for eMBB
 **a) THz Propagation Analysis (8 points)**
 ```
 Path Loss at 1 THz:
-FSPL = 20log₁₀(d) + 20log₁₀(f) + 32.45
-FSPL = 20log₁₀(100) + 20log₁₀(10¹²) + 32.45 = 292.45 dB
+FSPL = 20log₁₀(d) + 20log₁₀(f) + 20log₁₀(4π/c)
+FSPL = 20log₁₀(100) + 20log₁₀(10¹²) + 20log₁₀(4π/3×10⁸)
+FSPL = 40.00 + 240.00 + (-147.56) = 132.44 dB
 
 Atmospheric absorption: 10-100 dB/km (molecular absorption)
 Coverage: Limited to 10-50m indoor, requires dense deployment
