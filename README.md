@@ -18,7 +18,7 @@ Welcome to the **Telco-AIX** collaborative experimental workspace –> where we 
 | ⚡ Smart Infrastructure | [AI Powered SmartGrid](https://github.com/tme-osx/Telco-AIX/tree/main/smartgrid) | Grid Optimization |
 | 🛡️ IoT Security | [IoT Perimeter Security](https://github.com/tme-osx/Telco-AIX/tree/main/iot-sec) | Perimeter Security|
 | 🤖 Advanced AI | [5G CNF RCA with LLM](https://github.com/ansonmez/5g_llm_ilab_demo) | Root Cause Analysis |
-| 💬 Customer Experience | [CRM Voice App](https://github.com/tme-osx/Telco-AIX/tree/main/crm) | Intelligent Customer Interactions |
+| 💬 Customer Experience | [CRM Voice App](https://github.com/tme-osx/Telco-AIX/tree/main/crm) <br> [Intent Classification](https://github.com/open-experiments/Telco-AIX/tree/main/intclass)| Intelligent Customer Interactions |
 | 🔍 Anomaly Detection | [RootCause Analysis](https://github.com/tme-osx/Telco-AIX/tree/main/llm-rca) | Model Chaining & RAG |
 | 🛰️ Connectivity | [Starlink QoE](https://github.com/tme-osx/Telco-AIX/tree/main/starlink) | Satellite ISP Experience |
 | 🖥️ Network Operations | [NoC AI Augmentation](https://github.com/tme-osx/Telco-AIX/tree/main/5gprod) | OSS Optimization |
