@@ -1,5 +1,7 @@
 # Telco AI Intent Classification: A GenAI Transformation Journey
 
+**Team** : Anil Sonmez, Fatih Nar
+
 ## Executive Summary
 
 This project represents a comprehensive transformation of a telco service provider customer support system, replacing a traditional NLP-based intent classifier with a state-of-the-art Generative AI solution. Through systematic fine-tuning, advanced prompt engineering, and deployment on Red Hat OpenShift AI (RHOAI), we achieved **94.8% accuracy** in intent classification, surpassing the legacy system's performance while providing superior scalability and multilingual capabilities.
@@ -262,6 +264,3 @@ python qa/qa_qwen_intent_classifier.py
 - [RHOAI Documentation](https://docs.openshift.com/container-platform/)
 - [vLLM Performance Guide](https://docs.vllm.ai/)
 
----
-
-**Project Status**: Production-Ready | **Version**: 1.0 | **Last Updated**: 2025
