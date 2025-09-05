@@ -33,7 +33,7 @@ Our systematic evaluation process tested multiple models to identify the optimal
 | Phi-4 | - | 78.62% | RHOAI | Microsoft model |
 | Llama-4-Scout-17B | 17B | 83.32% | 4x43GB VRAM | Best pre-trained performance |
 | Qwen3-32B (Full) | 32B | 87.10% | RHOAI | Large model baseline |
-| **Qwen3-4B (Fine-tuned)** | **4B** | **94.8%** | **RHOAI** | **Our solution** |
+| **Qwen3-4B (Fine-tuned)** | **4B** | **94.8%** | **RHOAI** | **Our Final Stop** |
 
 ### 2. Fine-Tuning Process
 
