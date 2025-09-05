@@ -220,7 +220,7 @@ Fine-tuned Qwen3-4B:      94.8% accuracy (English)
 ```
 intclass/
 ├── data/
-│   └── data.jsonl                # Training dataset (9,445 samples)
+│   └── data.jsonl                # Training dataset (put your data here)
 ├── docker/
 │   ├── artifactory.txt           # Container build instructions
 │   ├── extract_model.py          # Model extraction utility
