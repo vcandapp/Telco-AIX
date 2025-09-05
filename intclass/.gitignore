@@ -1,0 +1,94 @@
+# Claude-specific files
+CLAUDE.md
+.claude/
+*.claude
+claude-code/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Model outputs and checkpoints
+output/
+checkpoints/
+*.ckpt
+*.pth
+*.pt
+*.safetensors
+*.bin
+models/
+hf_format/
+samples_*/
+
+# Data files (keep original, exclude generated)
+data/cic_cleaned.jsonl
+data/*.bak
+data/*.tmp
+
+# Logs
+*.log
+logs/
+*.out
+*.err
+
+# Test outputs
+qwen_test_report_*.json
+test_results/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Docker
+*.tar.xz
+*.tar.gz
+docker/models/*
+!docker/models/touch.txt
+
+# Temporary files
+/tmp/
+/temp/
+*.tmp
+*.bak
+*.cache
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# API keys and credentials
+*credentials*
+*secrets*
+*.key
+*.pem

@@ -1,0 +1,8 @@
+1st:
+docker login
+2nd: 
+docker build . -t modelcar-qwen3-4b-sft:latest --platform linux/amd64 -f .Dockerfile
+3rd :
+docker tag modelcar-qwen3-4b-sft:latest efatnar/modelcar-qwen3-4b-sft:latest
+4th:
+docker push efatnar/modelcar-qwen3-4b-sft:latest
