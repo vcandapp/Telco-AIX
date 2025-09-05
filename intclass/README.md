@@ -61,7 +61,7 @@ Our systematic evaluation process tested multiple models to identify the optimal
 - **Memory Management**: Conservative token limits to prevent OOM
 - **Storage Efficiency**: Checkpoint management (100GB minimum required)
 - **GPU Optimization**: Single RTX PRO 6000 configuration
-- **Training Time**: ~3-4 hours per epoch
+- **Training Time**: ~15mins hours per epoch
 
 ### 3. Prompt Engineering Strategy
 
