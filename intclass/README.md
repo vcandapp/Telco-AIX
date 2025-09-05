@@ -227,8 +227,8 @@ intclass/
 │   └── models/                   # Model artifacts directory
 ├── qa/
 │   └── qa_qwen_intent_classifier.py  # Comprehensive QA test suite
+│   └── test_trained_model.py  # Local model testing utility
 ├── sft_qwen3-4b-instruct.py     # Fine-tuning training script
-├── test_trained_model.py        # Local model testing utility
 ├── requirements.txt              # Python dependencies
 └── README.md                     # This document
 ```
