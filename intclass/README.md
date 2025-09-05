@@ -260,7 +260,4 @@ python qa/qa_qwen_intent_classifier.py
 ## References
 
 - [Prompt Engineering Article](https://medium.com/open-5g-hypercore/episode-xxix-the-prompt-engineering-how-to-make-a-toddler-act-talk-nice-83e9aab2e3b9)
-- [Telco-AIX Repository](https://github.com/open-experiments/Telco-AIX)
-- [RHOAI Documentation](https://docs.openshift.com/container-platform/)
-- [vLLM Performance Guide](https://docs.vllm.ai/)
 
