@@ -18,7 +18,7 @@ Required packages:
 - `requests` - HTTP library for API testing
 - `urllib3` - HTTP client for Python
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 intclass/
@@ -36,7 +36,7 @@ intclass/
 ├── requirements.txt              # Python dependencies
 ```
 
-## 📊 Dataset
+## Sample Dataset
 
 The training dataset (`data/cic.jsonl`) contains 9,403 conversation samples in JSONL format. Each sample follows this structure:
 
@@ -107,7 +107,7 @@ python sft_qwen3-4b-instruct.py \
 - **Single GPU**: Optimized for single RTX PRO 6000
 - **Checkpointing**: Full state saved at each epoch
 
-## 🧪 Testing
+## Testing
 
 ### Local Model Testing
 Test the fine-tuned model locally:
@@ -126,7 +126,7 @@ For deployed models served via vLLM:
 python qa/qa_qwen_intent_classifier.py
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Storage Requirements 
 **Important:** Each training epoch saves a full model checkpoint (~8-16GB per checkpoint). With 10 epochs, you'll need:
