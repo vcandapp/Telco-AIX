@@ -228,7 +228,6 @@ intclass/
 ├── sft_qwen3-4b-instruct.py     # Fine-tuning training script
 ├── test_trained_model.py        # Local model testing utility
 ├── requirements.txt              # Python dependencies
-├── CLAUDE.md                     # Development guidelines
 └── README.md                     # This document
 ```
 
