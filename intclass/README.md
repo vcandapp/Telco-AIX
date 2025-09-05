@@ -1,4 +1,4 @@
-# Telco AI Intent Classification: A GenAI Transformation Journey
+# Telco AI Intent Classification
 
 **Team** : Anil Sonmez, Fatih Nar
 
