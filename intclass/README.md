@@ -261,4 +261,5 @@ python qa/qa_qwen_intent_classifier.py
 ## References
 
 - [Prompt Engineering Article](https://medium.com/open-5g-hypercore/episode-xxix-the-prompt-engineering-how-to-make-a-toddler-act-talk-nice-83e9aab2e3b9)
+- [Training Hub](https://github.com/Red-Hat-AI-Innovation-Team/training_hub)
 
