@@ -255,21 +255,6 @@ python test_trained_model.py
 python qa/qa_qwen_intent_classifier.py
 ```
 
-## Contributing
-
-This project is part of the Telco-AIX initiative. For contributions:
-1. Review the prompt engineering guidelines
-2. Test changes against the full test suite
-3. Maintain >90% accuracy threshold
-4. Document any infrastructure changes
-
-## Acknowledgments
-
-- **Red Hat OpenShift AI Team**: Infrastructure and platform support
-- **Qwen Team**: Base model development
-- **Telco Engineering Team**: Domain expertise and validation
-- **Open-5G-Hypercore Community**: Collaborative development
-
 ## References
 
 - [Prompt Engineering Article](https://medium.com/open-5g-hypercore/episode-xxix-the-prompt-engineering-how-to-make-a-toddler-act-talk-nice-83e9aab2e3b9)
