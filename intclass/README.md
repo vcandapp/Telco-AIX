@@ -141,7 +141,6 @@ Fine-tuned Qwen3-4B:      94.8% accuracy (English)
 | Optimal Temperature | 1000 | 83.32% | 0.9 | Temperature tuning |
 | Fine-tuned Epoch 2 | 9445 | 87.09% | 0.1 | Early stopping point |
 | Fine-tuned Epoch 3 | 9445 | 94.8% | 0.1 | **Production model** |
-| Fine-tuned Epoch 6 | 9445 | 86.83% | 0.1 | Overfitting observed |
 
 ## Deployment Architecture
 
