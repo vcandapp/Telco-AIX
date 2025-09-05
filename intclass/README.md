@@ -1,6 +1,6 @@
 # Telco AI Intent Classification
 
-**Team** : Anil Sonmez, Fatih Nar
+**Team** : Anil Sonmez, Fatih Nar <br> 
 **Credits** : Mustafa Eyceoz, William Caban
 
 ## Executive Summary
