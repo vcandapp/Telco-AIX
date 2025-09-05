@@ -1,6 +1,6 @@
 # Telco Intent Classification with Qwen3-4B-Instruct
 
-A supervised fine-tuning (SFT) project for telecommunications customer intent classification using the Qwen3-4B-Instruct model. This solution classifies customer queries into predefined intents for improved customer service automation.
+A supervised fine-tuning (SFT) project for customer support workflow intent classification job, using the Qwen3-4B-Instruct model as base to start with. 
 
 ## Quick Use with RHOAI with vLLM KServe RunTime
 
@@ -30,7 +30,7 @@ intclass/
 │   └── models/
 │       └── touch.txt             # Placeholder for model files
 ├── qa/
-│   └── qa_qwen_intent_classifier.py  # Comprehensive QA test suite
+│   └── qa_qwen_intent_classifier.py  # QA test suite
 ├── sft_qwen3-4b-instruct.py     # Main training script
 ├── test_trained_model.py        # Local model testing
 ├── requirements.txt              # Python dependencies
