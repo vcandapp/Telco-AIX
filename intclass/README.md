@@ -28,13 +28,13 @@ This project represents a comprehensive transformation of a telco service provid
 
 Our systematic evaluation process tested multiple models to identify the optimal solution:
 
-| Model | Parameters | Accuracy | Infrastructure | Notes |
+| Model | Parameters | Accuracy | Platform | Notes |
 |-------|------------|----------|----------------|-------|
 | Granite-7B-Lab | 7B | 19.96% | RHOAI | Baseline test |
 | Granite-8B-Lab-v1 | 8B | 41.46% | RHOAI | With context definitions |
 | Llama-3.2-3B | 3B | 49.05% | RHOAI | Lightweight option |
 | Phi-4 | - | 78.62% | RHOAI | Microsoft model |
-| Llama-4-Scout-17B | 17B | 83.32% | 4x43GB VRAM | Best pre-trained performance |
+| Llama-4-Scout-17B | 17B | 83.32% | RHOAI | Best pre-trained performance |
 | Qwen3-32B (Full) | 32B | 87.10% | RHOAI | Large model baseline |
 | **Qwen3-4B (Fine-tuned)** | **4B** | **94.8%** | **RHOAI** | **Our Current State** |
 
