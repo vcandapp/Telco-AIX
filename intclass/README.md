@@ -251,7 +251,7 @@ python sft_qwen3-4b-instruct.py \
 ### Testing
 ```bash
 # Local testing
-python test_trained_model.py
+python qa/test_trained_model.py
 
 # API testing
 python qa/qa_qwen_intent_classifier.py
