@@ -106,11 +106,11 @@ The system classifies customer queries into 70+ intents, including:
 **Account Management**
 - `Migration`: Plan changes (prepaid/postpaid)
 - `CustomerAccountDtlsPrefsUpdateRequest`: Profile updates
-- `EIDUpdateRequest`: Emirates ID updates
+- `IDUpdateRequest`: Customer ID updates
 - `AccountSuspensionRequest`: Temporary service suspension
 
 **Value-Added Services**
-- `RetrieveSmilesInformation`: Rewards program
+- `RetrieveRewardsInformation`: Rewards program
 - `RequestSubscriptionOrder`: Add-on subscriptions
 - `PreferredNumber`: Premium number selection
 - `AutopayRegistrationFAQ`: Payment automation
