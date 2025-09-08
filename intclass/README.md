@@ -37,7 +37,7 @@ Our systematic evaluation process tested multiple models to identify the optimal
 | Llama-4-Scout-17B | 17B | 83.32% | RHOAI | Best pre-trained performance |
 | Qwen3-32B (Full) | 32B | 87.10% | RHOAI | Large model baseline |
 | **Qwen3-4B (Fine-tuned)** | **4B** | **93.22%** | **RHOAI** | **v1 on Faster Learning Rate + 3 Epochs** |
-| **Qwen3-4B (Fine-tuned)** | **4B** | **92.95%** | **RHOAI** | **v2 on Slower Learning Rate + 10 Epochs** |
+| **Qwen3-4B (Fine-tuned)** | **4B** | **93.95%** | **RHOAI** | **v2 on Slower Learning Rate + 10 Epochs** |
 
 ### 2. Fine-Tuning Process
 
