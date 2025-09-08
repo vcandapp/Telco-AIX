@@ -36,7 +36,8 @@ Our systematic evaluation process tested multiple models to identify the optimal
 | Phi-4 | - | 78.62% | RHOAI | Microsoft model |
 | Llama-4-Scout-17B | 17B | 83.32% | RHOAI | Best pre-trained performance |
 | Qwen3-32B (Full) | 32B | 87.10% | RHOAI | Large model baseline |
-| **Qwen3-4B (Fine-tuned)** | **4B** | **94.8%** | **RHOAI** | **Our Current State** |
+| **Qwen3-4B (Fine-tuned)** | **4B** | **93.22%** | **RHOAI** | **v1 on Faster Learning Rate + 3 Epochs** |
+| **Qwen3-4B (Fine-tuned)** | **4B** | **92.95%** | **RHOAI** | **v2 on Slower Learning Rate + 10 Epochs** |
 
 ### 2. Fine-Tuning Process
 
@@ -135,16 +136,6 @@ Fine-tuned Qwen3-4B:      94.8% accuracy (English)
 - **Memory Usage**: ~8-16GB VRAM
 - **Multilingual Support**: English (primary), Arabic (secondary)
 
-### Evaluation Results by Configuration
-
-| Configuration | Test Set Size | Accuracy | Temperature | Notes |
-|--------------|---------------|----------|-------------|-------|
-| Baseline | 1000 | 83.12% | 0.5 | No fine-tuning |
-| Improved Prompt | 1000 | 82.72% | 0.5 | Enhanced definitions |
-| Optimal Temperature | 1000 | 83.32% | 0.9 | Temperature tuning |
-| Fine-tuned Epoch 2 | 9445 | 87.09% | 0.1 | Early stopping point |
-| Fine-tuned Epoch 3 | 9445 | 94.8% | 0.1 | **Current Serving model** |
-
 ## Deployment Architecture
 
 ### Production Environment
@@ -154,17 +145,18 @@ Fine-tuned Qwen3-4B:      94.8% accuracy (English)
 - **API**: OpenAI-compatible endpoint for seamless integration
 - **Monitoring**: Real-time performance metrics and accuracy tracking
 
-### Integration Points
-```python
-# API Configuration
-{
-    "endpoint": "https://qwen3-4b-sft-tme-aix.apps.sandbox01.narlabs.io",
-    "model": "qwen3-4b-sft",
-    "api_version": "v1",
-    "authentication": "Bearer token",
-    "max_tokens": 50,
-    "temperature": 0.1
-}
+### Deployment Configs
+```
+# vLLM Configuration
+qwen3-4b-sft-v1
+oci://docker.io/efatnar/modelcar-qwen3-4b-sft:v1
+--max-model-len=32768
+--gpu-memory-utilization=0.95
+---
+qwen3-4b-sft-v2
+oci://docker.io/efatnar/modelcar-qwen3-4b-sft:v2
+--max-model-len=32768
+--gpu-memory-utilization=0.95
 ```
 
 ## Testing & Quality Assurance
