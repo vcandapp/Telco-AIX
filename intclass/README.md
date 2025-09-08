@@ -184,7 +184,7 @@ oci://docker.io/efatnar/modelcar-qwen3-4b-sft:v2
 ### Success Factors
 1. **Systematic Model Evaluation**: Testing 15+ models before selection
 2. **Iterative Fine-tuning**: Finding optimal epoch (3) to avoid overfitting
-3. **Prompt Engineering**: Structured prompts with clear guidelines
+3. **Prompt Engineering**: Structured prompts with clear guidelines. [See-Examples Here](https://github.com/open-experiments/Telco-AIX/blob/main/telco-sme/system_prompts.json)
 4. **Temperature Optimization**: Low temperature (0.1) for consistency
 5. **Infrastructure Choice**: RHOAI providing scalable, enterprise-ready platform
 
