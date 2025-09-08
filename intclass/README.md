@@ -125,7 +125,7 @@ The system classifies customer queries into 70+ intents, including:
 ```
 Legacy NLP System:        ~75% accuracy
 Initial LLM Tests:        38-83% (various models)
-Fine-tuned Qwen3-4B:      94.8% accuracy (English)
+Fine-tuned Qwen3-4B:      93.95% accuracy (English)
                           81.44% accuracy (Arabic)
 ```
 
