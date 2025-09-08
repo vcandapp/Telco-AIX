@@ -5,7 +5,7 @@
 
 ## Executive Summary
 
-This project represents a comprehensive transformation of a telco service provider customer support system, replacing a traditional NLP-based intent classifier with a state-of-the-art Generative AI solution. Through systematic fine-tuning, advanced prompt engineering, and deployment on Red Hat OpenShift AI (RHOAI), we achieved **94.8% accuracy** in intent classification, surpassing the legacy system's performance while providing superior scalability and multilingual capabilities.
+This project represents a comprehensive transformation of a telco service provider customer support system, replacing a traditional NLP-based intent classifier with a state-of-the-art Generative AI solution. Through systematic fine-tuning, advanced prompt engineering, and deployment on Red Hat OpenShift AI (RHOAI), we achieved **93.95% accuracy** in intent classification, surpassing the legacy system's performance while providing superior scalability and multilingual capabilities.
 
 ## Project Overview
 
