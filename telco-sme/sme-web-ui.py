@@ -3702,10 +3702,17 @@ class ChatInterface:
             # Header - more compact
             with gr.Row():
                 with gr.Column(scale=4):
+                    # Get active model from API if possible
+                    try:
+                        test_result = self.client.test_connection()
+                        active_model = test_result.get('models', {}).get('configured', self.config.model_name)
+                    except:
+                        active_model = self.config.model_name
+                    
                     gr.Markdown(
-                        """
+                        f"""
                         # 🤖 Telco-AIX SME Web Interface
-                        **Connected to:** Qwen3-32B Model | **Features:** Smart streaming, timeout handling, context optimization
+                        **Connected to:** {active_model} | **Features:** Smart streaming, timeout handling, context optimization
                         """
                     )
                 with gr.Column(scale=1):
