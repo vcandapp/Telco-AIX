@@ -49,8 +49,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 @dataclass
 class Config:
     """Enhanced configuration for the chat application"""
-    api_endpoint: str = "https://qwen3-30b-a3b-fp8-tme-aix.apps.sandbox01.narlabs.io"
-    model_name: str = "qwen3-30b-a3b-fp8"
+    api_endpoint: str = "https://api-url"
+    model_name: str = "model-name"
     default_temperature: float = 0.4
     default_max_tokens: int = 20000
     admin_username: str = "admin"
@@ -59,7 +59,7 @@ class Config:
     verify_ssl: bool = False
     
     # Token Authentication
-    api_token: str = "eyJhbGciOiJSUzI1NiIsImtpZCI6Imx6a1JYdXpGemw1aEgxb3cxNlRadG1NdlE3Unk4cnZsQ1M2QmJ4NGtUYjQifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ0bWUtYWl4Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtbmFtZS1xd2VuMy0zMGItYTNiLWZwOC1zYSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJxd2VuMy0zMGItYTNiLWZwOC1zYSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImM4YzY4YWFjLTUwOTEtNGRkZC1iMmVlLTcxYjY4MzJlZmJmZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDp0bWUtYWl4OnF3ZW4zLTMwYi1hM2ItZnA4LXNhIn0.FENsfTFgkSLbndgA-7XY_mpWMUlmDX6kEklI7GFmjcvnmSYMRXebVwStze-CgpGdxAyPnvLLuLnFXyBf3K_ap2_MDgpNiiyUUfGRHIosX2L_Dlc2I3VbiYKJfOsdA6thAqSjbOP0p8Cjuse0pnEHAE6D93hZgbmFHjzZWdtIRy1QkQV3yhF-RS3XB6lfx0Y0hHE3MLYlWe-3NbttZz1RqQwBiNQjKcR783vwOsesLuZR8VAyAfOgSAB0sr5BfANlaJ5d9QcFAqqKVkpRuJwSRGVL8n0_ijEz5IqaCJ3yhcsqNFFP1PIoCDMpGHEQlLTMNtnl1HLwcVZr04sOg0u1RNeVb9T9d6jOFM-WC9521rmD2YS2l0UUXBuv_zSNqXRohlSyZZ-SXWFxnm5TucsNly6isY4Sz7N5vnFqcGW9vyTBmkY1XdHu8T7UwPlpFp-T5XtIlMxymhQeLw6aaIjP-3XGkUwn8SllUpWWtujSou_3Zl6aCg5LQol2vcIyRPb6uyf1CE0BnXSBwd3FKmXzNFH9DCw4UK8h3EYs6HGn4t3JKDs1f-WpN6mDiklIKchRX0t-LxI3wuezafbrl8KNy4gW8kCXlicCQ089XJN_xK6w3IgiKgTbl7mDKVKo9oLE2fbkj3ciqt8ZqgdA5d6rd24ZzUsPaTGlr6o3DpIvVeA"
+    api_token: str = "your api-key"
     use_token_auth: bool = True
     
     # Timeout settings
@@ -73,10 +73,10 @@ class Config:
     max_retry_attempts: int = 5
     
     # Embeddings API Configuration
-    embeddings_api_endpoint: str = "https://qwen3-embedding-8b-tme-aix.apps.sandbox01.narlabs.io"
-    embeddings_model_name: str = "qwen3-embedding-8b"
-    embeddings_api_token: str = "eyJhbGciOiJSUzI1NiIsImtpZCI6Imx6a1JYdXpGemw1aEgxb3cxNlRadG1NdlE3Unk4cnZsQ1M2QmJ4NGtUYjQifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ0bWUtYWl4Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtbmFtZS1xd2VuMy1lbWJlZGRpbmctOGItc2EiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoicXdlbjMtZW1iZWRkaW5nLThiLXNhIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiZGNjODljMmEtMTljYy00MzM0LWE5MWEtMThmZjdlNzQ3ZDg1Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OnRtZS1haXg6cXdlbjMtZW1iZWRkaW5nLThiLXNhIn0.VQPb1xZg0oR_-UuTBlc6HPv-SdLY3C-HOuMFeyCNkvUTfeTznRkEjsPZp3Yxf7fmWRoj1py717sZyTrE3rgqo0M_Peb7hfUHt1x0E1jmzA4ap25px3kdOg8Z_pVK6ggXKmCt3mNBqgnHD86N5RUQB_P2DF4mcTi3TOYKrFet1s8-0_VCIhsN0cUB5xvrptmhORa_qsZ0S0h0YQxiMNR-hjorx1na1WwEsTOdNDnCMcLl69lSzlbQXdL4zlb_G8LWvmfNbACVQCA5mNLj9IaOvyy34XdZ16AI9THNVoHrAl2-3F__w5aD4VxJk20S-xULqomb9yCTZkbmI1pPJ_CJYc5qjEZzk5Ta78T4MUNCgcS49MuqTQmw6Rv3MUGgFZP81L99WZKxRENQTHF3zNS3A1CfeD0eUwWpLAMZKIr6hJR_z46wFPCThcfnRqjvdY2Z9EoVJrRMk6L3JbO7-LnUIPxAzBJxxYXuMUAr7d7jMhEuniaDUMJbXNwx46Ek5eQzqLAjQ-FHHVts9aMGh3L_BUR0P26k5wZgHKv7ydZCaHd1Wt4XOJHqfv8tfrN6fLnfZdz8Xliyk2mQM5B4GVg2woRNtkmIUoHITNafsQ1xmL04QfwqdqF1retbfs-otXlp9qJybOz9I-n6FO1twrvZmBo2wvaMmw4ADfDAKHlDtDw"
-
+    embeddings_api_endpoint: str = "https://api-url"
+    embeddings_model_name: str = "model-name"
+    embeddings_api_token: str = "your api-key"
+    
 # Load system prompts from external file
 def load_system_prompts():
     """Load system prompts from external JSON file"""
